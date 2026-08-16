@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 
 export type BriefPin = {
   placeId: string;
@@ -19,8 +20,20 @@ function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-/** All mapped briefs as clickable pins; popups link to the brief page. */
-export function BriefsMap({ pins }: { pins: BriefPin[] }) {
+/**
+ * Brief locations as pins on OSM tiles. Interactive (default) pans/zooms and
+ * links each pin's popup to its brief page; non-interactive is a fixed
+ * "static" map for showing a single department's location.
+ */
+export function BriefsMap({
+  pins,
+  interactive = true,
+  className,
+}: {
+  pins: BriefPin[];
+  interactive?: boolean;
+  className?: string;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,7 +45,20 @@ export function BriefsMap({ pins }: { pins: BriefPin[] }) {
     // Leaflet touches `window` at import time, so it must load in the browser.
     import("leaflet").then((L) => {
       if (disposed) return;
-      map = L.map(container);
+      map = L.map(
+        container,
+        interactive
+          ? {}
+          : {
+              dragging: false,
+              scrollWheelZoom: false,
+              doubleClickZoom: false,
+              boxZoom: false,
+              keyboard: false,
+              touchZoom: false,
+              zoomControl: false,
+            },
+      );
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -50,35 +76,52 @@ export function BriefsMap({ pins }: { pins: BriefPin[] }) {
 
       for (const pin of pins) {
         const locality = [pin.city, pin.state].filter(Boolean).join(", ");
-        L.marker([pin.lat, pin.lng], { icon, title: pin.name })
-          .addTo(map)
-          .bindPopup(
+        const marker = L.marker([pin.lat, pin.lng], {
+          icon,
+          title: pin.name,
+          interactive,
+          keyboard: interactive,
+        }).addTo(map);
+        if (interactive) {
+          marker.bindPopup(
             `<p class="brief-pin-name">${escapeHtml(pin.name)}</p>` +
               (locality
                 ? `<p class="brief-pin-locality">${escapeHtml(locality)}</p>`
                 : "") +
               `<a class="brief-pin-link" href="/brief/${encodeURIComponent(pin.placeId)}">Open brief &rarr;</a>`,
           );
+        }
       }
 
-      map.fitBounds(
-        L.latLngBounds(pins.map((p) => [p.lat, p.lng])),
-        { padding: [40, 40], maxZoom: 11 },
-      );
+      if (pins.length === 1) {
+        map.setView([pins[0].lat, pins[0].lng], 12);
+      } else {
+        map.fitBounds(
+          L.latLngBounds(pins.map((p) => [p.lat, p.lng])),
+          { padding: [40, 40], maxZoom: 11 },
+        );
+      }
     });
 
     return () => {
       disposed = true;
       map?.remove();
     };
-  }, [pins]);
+  }, [pins, interactive]);
 
   return (
     <div
       ref={containerRef}
       role="region"
-      aria-label="Map of researched departments"
-      className="relative isolate z-0 h-[65vh] min-h-[420px] overflow-hidden rounded-xl border bg-muted"
+      aria-label={
+        pins.length === 1
+          ? `Map showing ${pins[0].name}`
+          : "Map of researched departments"
+      }
+      className={cn(
+        "relative isolate z-0 h-[65vh] min-h-[420px] overflow-hidden rounded-xl border bg-muted",
+        className,
+      )}
     />
   );
 }

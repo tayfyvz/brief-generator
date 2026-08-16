@@ -20,6 +20,7 @@ import {
   type SidebarNavItem,
 } from "@/components/brief/brief-sidebar";
 import { BriefPending } from "@/components/brief/brief-pending";
+import { BriefsMap } from "@/components/briefs-map";
 import { FactSection } from "@/components/brief/fact-section";
 import { FactSearch } from "@/components/brief/fact-search";
 import { HeaderTitle } from "@/components/brief/header-title";
@@ -236,6 +237,26 @@ export default async function BriefPage({
             </div>
           </div>
         </header>
+
+        {/* Compact location map; static on purpose, the library map explores */}
+        {content && department?.lat != null && department?.lng != null && (
+          <div className="fade-up mt-5">
+            <BriefsMap
+              interactive={false}
+              className="h-36 min-h-0 sm:h-40"
+              pins={[
+                {
+                  placeId,
+                  name: department.name,
+                  city: department.city,
+                  state: department.state,
+                  lat: department.lat,
+                  lng: department.lng,
+                },
+              ]}
+            />
+          </div>
+        )}
 
         {/* Live-run panel (only while a run streams or after a failure) */}
         <ResearchController
