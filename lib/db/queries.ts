@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, notInArray, notLike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, notInArray, notLike, or, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { briefs, departments, facts, researchRuns, runEvents, sources } from "./schema";
 import type { Anchor } from "@/lib/schemas/anchor";
@@ -67,6 +67,30 @@ export async function getBriefLibrary(page = 1, pageSize = 12) {
     .innerJoin(departments, eq(briefs.placeId, departments.placeId))
     .where(where);
   return { rows, total };
+}
+
+/** All briefs with coordinates, for the /briefs map view (never paginated). */
+export async function getBriefPins() {
+  const db = getDb();
+  return db
+    .select({
+      placeId: briefs.placeId,
+      name: departments.name,
+      city: departments.city,
+      state: departments.state,
+      lat: sql<number>`${departments.lat}`,
+      lng: sql<number>`${departments.lng}`,
+    })
+    .from(briefs)
+    .innerJoin(departments, eq(briefs.placeId, departments.placeId))
+    .where(
+      and(
+        notLike(briefs.placeId, "Test%"),
+        isNotNull(departments.lat),
+        isNotNull(departments.lng),
+      ),
+    )
+    .orderBy(desc(briefs.createdAt));
 }
 
 export async function getDepartment(placeId: string) {

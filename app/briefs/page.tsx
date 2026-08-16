@@ -4,9 +4,12 @@ import {
   ChevronLeft,
   ChevronRight,
   LibraryBig,
+  List,
+  Map as MapIcon,
   MapPin,
 } from "lucide-react";
-import { getBriefLibrary } from "@/lib/db/queries";
+import { BriefsMap } from "@/components/briefs-map";
+import { getBriefLibrary, getBriefPins } from "@/lib/db/queries";
 import { relativeDays } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -20,14 +23,16 @@ const PAGE_SIZE = 12;
 export default async function BriefsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; view?: string }>;
 }) {
-  const { page: rawPage } = await searchParams;
+  const { page: rawPage, view } = await searchParams;
   const requested = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
+  const mapView = view === "map";
 
   const { rows, total } = await getBriefLibrary(requested, PAGE_SIZE).catch(
     () => ({ rows: [], total: 0 }),
   );
+  const pins = mapView ? await getBriefPins().catch(() => []) : [];
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(requested, pageCount);
 
@@ -47,15 +52,47 @@ export default async function BriefsPage({
               : `${total} researched department${total === 1 ? "" : "s"}, newest first.`}
           </p>
         </div>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"
-        >
-          Research a new department
-        </Link>
+        <div className="flex items-center gap-3">
+          <nav aria-label="Library view" className="flex rounded-lg border bg-card p-0.5">
+            <ViewLink href="/briefs" active={!mapView}>
+              <List className="size-4" />
+              List
+            </ViewLink>
+            <ViewLink href="/briefs?view=map" active={mapView}>
+              <MapIcon className="size-4" />
+              Map
+            </ViewLink>
+          </nav>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"
+          >
+            Research a new department
+          </Link>
+        </div>
       </div>
 
-      {rows.length === 0 ? (
+      {mapView ? (
+        pins.length === 0 ? (
+          <div className="mt-10 rounded-xl border border-dashed p-10 text-center">
+            <p className="font-medium">Nothing to map yet</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              Briefs with a known location will show up here as pins.
+            </p>
+          </div>
+        ) : (
+          <div className="fade-up mt-8">
+            <BriefsMap pins={pins} />
+            {pins.length < total && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {total - pins.length} brief{total - pins.length === 1 ? "" : "s"}{" "}
+                without coordinates {total - pins.length === 1 ? "is" : "are"}{" "}
+                only in the list view.
+              </p>
+            )}
+          </div>
+        )
+      ) : rows.length === 0 ? (
         <div className="mt-10 rounded-xl border border-dashed p-10 text-center">
           <p className="font-medium">No briefs yet</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
@@ -92,7 +129,7 @@ export default async function BriefsPage({
         </ul>
       )}
 
-      {pageCount > 1 && (
+      {!mapView && pageCount > 1 && (
         <nav
           aria-label="Brief pages"
           className="mt-8 flex items-center justify-center gap-1.5"
@@ -129,6 +166,31 @@ export default async function BriefsPage({
         </nav>
       )}
     </main>
+  );
+}
+
+function ViewLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition",
+        active
+          ? "bg-accent text-foreground"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </Link>
   );
 }
 

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Imported here (not in the map component) so the overrides below always
+   land after it in the cascade. */
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -181,6 +184,55 @@
     transform: scale(2.4);
     opacity: 0;
   }
+}
+
+/* Leaflet map view: theme the OSM tiles and popups to match the app. */
+.dark .map-tiles {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
+.leaflet-container {
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+.leaflet-container .leaflet-control-attribution {
+  background: color-mix(in oklab, var(--color-card) 80%, transparent);
+  color: var(--color-muted-foreground);
+}
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  background: var(--color-card);
+  color: var(--color-card-foreground);
+  border-color: var(--color-border);
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-card);
+  color: var(--color-card-foreground);
+  box-shadow: 0 4px 16px oklch(0 0 0 / 15%);
+}
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius);
+}
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--color-muted-foreground);
+}
+.brief-pin svg {
+  filter: drop-shadow(0 1px 2px oklch(0 0 0 / 35%));
+}
+.brief-pin-name {
+  font-weight: 500;
+  line-height: 1.3;
+}
+.brief-pin-locality {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--color-muted-foreground);
+}
+.leaflet-container a.brief-pin-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {
