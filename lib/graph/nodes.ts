@@ -682,6 +682,9 @@ export async function verify(
           ),
         ].join("\n"),
         schema: verifyVerdictsSchema,
+        // Verdict lists scale with fact count; a truncated response would
+        // fail soft into "keep everything", losing the dedupe pass entirely.
+        maxTokens: 32000,
         context: {
           facts: factList.map((f) => ({
             id: f.id,
