@@ -20,6 +20,13 @@ export const metadata: Metadata = {
     "Paste a Google Place ID and get a live-researched, fully-cited one-page brief for fire-apparatus AEs.",
 };
 
+/**
+ * Applies the stored (or system-preferred) theme before first paint so a
+ * dark-mode visitor never sees a light flash. Kept inline because it must
+ * run before hydration.
+ */
+const themeInitScript = `try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: {
@@ -28,8 +35,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <SiteHeader />
         {children}

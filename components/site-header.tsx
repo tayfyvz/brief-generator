@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Flame, House, LibraryBig, RefreshCw, Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useSiteHeaderStore } from "@/lib/stores/header-store";
 import { useRunStore } from "@/lib/stores/run-store";
 import { relativeDays } from "@/lib/format";
@@ -98,6 +99,7 @@ export function SiteHeader() {
                 </span>
               </Link>
             )}
+            <ThemeToggle />
           </nav>
         </div>
       </div>
