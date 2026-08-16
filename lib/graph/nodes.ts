@@ -898,15 +898,19 @@ export async function synthesize(
                 "('$120,000 AFG grant awarded Mar 2025', not a sentence about it). " +
                 "Include a signal detail ONLY when it adds information the headline lacks, one short line max. " +
                 "Never write generic headlines like 'active community engagement'; if nothing concrete exists, " +
-                "return fewer signals and note the gap in caveats instead. " +
-                "NO REPETITION anywhere: each piece of information appears exactly once in the brief. " +
-                "The summary must not restate the signals or the curated facts; a signal must not restate " +
-                "another signal; caveats must not restate anything above them. " +
-                "Curation rules: each section takes ONLY facts of its own category " +
+                "return fewer signals and note the gap in caveats instead. Aging apparatus IS concrete: " +
+                "an engine over 20 years old is always a signal worth surfacing. " +
+                "NO REPETITION in the PROSE you write: the summary must not restate the signals; a signal " +
+                "must not restate another signal; caveats must not restate anything above them. " +
+                "Selecting fact IDs is NOT repetition: signals cite factIds, and curated sections list " +
+                "factIds, even for facts a signal or the summary touches. Always return them. " +
+                "Curation rules: ALWAYS fill each section's curated list with up to 5 of its best fact IDs " +
+                "whenever facts of that category exist; an empty curated list is wrong unless the category " +
+                "truly has no facts. Each section takes ONLY facts of its own category " +
                 "(leadership section: leadership facts; fleet: fleet; money: procurement and funding; news: news). " +
                 "Never pad a section with facts from another category; an empty section is honest and correct, " +
-                "and the gap belongs in caveats instead. Pick at most 5 facts per section, highest usefulness " +
-                "first, and use each fact ID in at most one section. " +
+                "and the gap belongs in caveats instead. Rank by usefulness, and use each fact ID in at most " +
+                "one section. " +
                 "Summary: at most 2 short sentences of orientation (who they are, the one thing that matters now). " +
                 "Caveats: one short line each, only for gaps that change how the AE approaches the call. " +
                 "Never use em dashes or en dashes anywhere in the brief.",
