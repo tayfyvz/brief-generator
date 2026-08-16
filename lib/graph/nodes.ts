@@ -706,24 +706,32 @@ export async function planExpansion(
     return { round, dryRounds: 2, warnings };
   }
 
-  const storedFacts: StoredFact[] = [];
-  const newQueries: string[] = [];
-  const newUrls: string[] = [];
-  const leadHints: string[] = [];
   const maxFetches = sparse ? MAX_FETCHES_PER_QUERY + 1 : MAX_FETCHES_PER_QUERY;
 
-  for (const lead of leads) {
-    if (!tryConsume(state.runId, "search")) break;
-    newQueries.push(leadKey(lead.kind, lead.query));
-    // A "similar" lead must carry a real URL; planners sometimes hand back
-    // prose; route those through semantic search instead of erroring.
-    const isUrl = (s: string) => {
-      try {
-        return Boolean(new URL(s));
-      } catch {
-        return false;
-      }
+  // A "similar" lead must carry a real URL; planners sometimes hand back
+  // prose; route those through semantic search instead of erroring.
+  const isUrl = (s: string) => {
+    try {
+      return Boolean(new URL(s));
+    } catch {
+      return false;
+    }
+  };
+
+  // Leads are independent: run them concurrently and merge afterwards.
+  // Wall-clock per round becomes the slowest lead instead of the sum; the
+  // sync in-process budget counters and URL claim registry keep the
+  // parallel workers from double-spending or double-fetching, and the
+  // Firecrawl token bucket absorbs the burst.
+  const processLead = async (lead: (typeof leads)[number]) => {
+    const out = {
+      query: null as string | null,
+      urls: [] as string[],
+      facts: [] as StoredFact[],
+      hints: [] as string[],
     };
+    if (!tryConsume(state.runId, "search")) return out;
+    out.query = leadKey(lead.kind, lead.query);
     const results = await withDegrade(
       () =>
         lead.kind === "similar" && isUrl(lead.query)
@@ -750,7 +758,7 @@ export async function planExpansion(
       if (!claimUrl(state.runId, url)) continue;
       if (!tryConsume(state.runId, "fetch")) break;
       visited.add(canonicalUrl(url));
-      newUrls.push(url);
+      out.urls.push(url);
       const page = await withDegrade(
         () => fetch.fetchPage(url),
         null,
@@ -773,10 +781,17 @@ export async function planExpansion(
         emit,
         pushWarning,
       });
-      storedFacts.push(...stored);
-      if (tier >= 4) leadHints.push(...stored.map((f) => f.claim));
+      out.facts.push(...stored);
+      if (tier >= 4) out.hints.push(...stored.map((f) => f.claim));
     }
-  }
+    return out;
+  };
+
+  const leadResults = await Promise.all(leads.map(processLead));
+  const storedFacts = leadResults.flatMap((r) => r.facts);
+  const newQueries = leadResults.flatMap((r) => (r.query ? [r.query] : []));
+  const newUrls = leadResults.flatMap((r) => r.urls);
+  const leadHints = leadResults.flatMap((r) => r.hints);
 
   emit({ type: "phase", phase: "expansion", status: "done", round });
   return {
