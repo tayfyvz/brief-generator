@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
  * Tracks which of the given element ids is currently at the top of the
  * viewport, so navs can highlight where the reader is.
  */
-export function useScrollSpy(ids: string[], offset = 120): string | null {
+export function useScrollSpy(ids: string[], offset = 190): string | null {
   const [active, setActive] = useState<string | null>(null);
   const key = ids.join("|");
 

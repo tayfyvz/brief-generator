@@ -183,9 +183,10 @@ export default async function BriefPage({
       <BriefSidebar navItems={navItems} sourceCount={sources.length} />
 
       <div className="min-w-0">
-        {/* Department header: identity left, actions right, live run full-width */}
+        {/* Department identity: name + address left, contact & stats right.
+            Run controls (Update / Start fresh) live in the site header. */}
         <header className="border-b pb-5">
-          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                 {resolvedName ?? "Researching department…"}
@@ -200,41 +201,29 @@ export default async function BriefPage({
                   </span>
                 )}
               </div>
-              {(department?.phone || department?.website) && (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {department?.phone && (
-                    <a
-                      href={`tel:${department.phone}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/5"
-                    >
-                      <Phone className="size-3.5 text-primary" /> {department.phone}
-                    </a>
-                  )}
-                  {department?.website && (
-                    <a
-                      href={department.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/5"
-                    >
-                      <Globe className="size-3.5 text-primary" />
-                      {new URL(department.website).hostname.replace(/^www\./, "")}
-                    </a>
-                  )}
-                </div>
-              )}
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <ResearchController
-                placeId={placeId}
-                hasBrief={Boolean(brief)}
-                researchedAt={brief ? brief.createdAt.toISOString() : null}
-                activeRunId={activeRunId}
-                interruptedRunId={interruptedRunId}
-                maxRounds={maxRounds}
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              {department?.phone && (
+                <a
+                  href={`tel:${department.phone}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/5"
+                >
+                  <Phone className="size-3.5 text-primary" /> {department.phone}
+                </a>
+              )}
+              {department?.website && (
+                <a
+                  href={department.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/5"
+                >
+                  <Globe className="size-3.5 text-primary" />
+                  {new URL(department.website).hostname.replace(/^www\./, "")}
+                </a>
+              )}
               {content && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
                     <ListChecks className="size-3.5" /> {facts.length} facts
                   </span>
@@ -242,16 +231,28 @@ export default async function BriefPage({
                   <span className="inline-flex items-center gap-1">
                     <FileSearch className="size-3.5" /> {sources.length} sources
                   </span>
-                </div>
+                </span>
               )}
             </div>
           </div>
         </header>
 
+        {/* Live-run panel (only while a run streams or after a failure) */}
+        <ResearchController
+          placeId={placeId}
+          hasBrief={Boolean(brief)}
+          researchedAt={brief ? brief.createdAt.toISOString() : null}
+          activeRunId={activeRunId}
+          interruptedRunId={interruptedRunId}
+          maxRounds={maxRounds}
+        />
+
         {content ? (
           <>
             {/* Mobile in-page nav with reading highlight */}
             <BriefSectionNav navItems={navItems} />
+
+            <FactSearch placeId={placeId} />
 
             {/* Summary spans the full content column so it reflows when the
                 sidebar collapses instead of sitting in a fixed-width block */}
@@ -266,11 +267,9 @@ export default async function BriefPage({
               </div>
             )}
 
-            <FactSearch placeId={placeId} />
-
             {/* Why call today */}
             {content.whyCallToday.length > 0 && (
-              <section id="why" className="mt-8 scroll-mt-28">
+              <section id="why" className="mt-8 scroll-mt-44 lg:scroll-mt-30">
                 <SectionHeading icon={Sparkles} title="Why call today" />
                 <ol className="grid gap-3 xl:grid-cols-3">
                   {content.whyCallToday.map((signal, i) => (
@@ -327,7 +326,7 @@ export default async function BriefPage({
             {/* Four sections; an empty section says so honestly */}
             {sectionData.map((section) => {
               return (
-                <section key={section.key} id={section.key} className="mt-9 scroll-mt-28">
+                <section key={section.key} id={section.key} className="mt-9 scroll-mt-44 lg:scroll-mt-30">
                   <SectionHeading
                     icon={section.icon}
                     title={section.title}
@@ -350,7 +349,7 @@ export default async function BriefPage({
 
             {/* Also found: background findings, collapsed by default */}
             {otherFacts.length > 0 && (
-              <section id="other" className="mt-9 scroll-mt-28">
+              <section id="other" className="mt-9 scroll-mt-44 lg:scroll-mt-30">
                 <SectionHeading
                   icon={Archive}
                   title="Also found"
@@ -370,7 +369,7 @@ export default async function BriefPage({
 
             {/* Honest research notes: caveats, caps, degraded tracks */}
             {hasNotes && (
-              <section id="notes" className="mt-9 scroll-mt-28 rounded-xl border border-dashed p-4">
+              <section id="notes" className="mt-9 scroll-mt-44 lg:scroll-mt-30 rounded-xl border border-dashed p-4">
                 <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                   <TriangleAlert className="size-4" /> Research notes
                 </h2>

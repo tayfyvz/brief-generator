@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
-  ArrowUp,
   Banknote,
   FileSearch,
   Newspaper,
@@ -164,13 +163,6 @@ export function BriefSidebar({
                 </p>
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            >
-              <ArrowUp className="size-3.5" /> Back to top
-            </button>
           </div>
         )}
       </div>

@@ -83,7 +83,9 @@ export function FactSearch({ placeId }: { placeId: string }) {
   }, [query, placeId]);
 
   return (
-    <div className="mt-6">
+    // Sticky: the search follows the reader down the brief, sitting just
+    // under the top header (and under the mobile section-chip nav).
+    <div className="sticky top-[6.375rem] z-20 -my-1 mt-5 bg-background/95 py-2 backdrop-blur lg:top-[3.625rem]">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -91,7 +93,7 @@ export function FactSearch({ placeId }: { placeId: string }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='Search the findings, e.g. "pumper" or "grant" (press / to focus)'
-          className="h-10 w-full rounded-lg border bg-card pl-9 pr-9 text-sm shadow-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-ring/40"
+          className="h-9 w-full rounded-lg border bg-card pl-9 pr-9 text-sm shadow-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-ring/40"
           aria-label="Search facts"
         />
         {query && (
@@ -106,7 +108,7 @@ export function FactSearch({ placeId }: { placeId: string }) {
         )}
       </div>
       {results && (
-        <div className="fade-up mt-2 overflow-hidden rounded-xl border bg-card shadow-md">
+        <div className="fade-up absolute left-0 right-0 top-full z-30 max-h-[55vh] overflow-y-auto rounded-xl border bg-card shadow-lg">
           {results.length === 0 ? (
             <p className="px-4 py-3 text-sm text-muted-foreground">
               No findings match “{query}”.
