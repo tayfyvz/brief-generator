@@ -77,6 +77,13 @@ class RunManager {
     return run && !run.finished ? run.runId : null;
   }
 
+  /** All runs currently in flight (for the home page live view). */
+  listActive(): { runId: string; placeId: string }[] {
+    return [...this.byRun.values()]
+      .filter((run) => !run.finished)
+      .map((run) => ({ runId: run.runId, placeId: run.placeId }));
+  }
+
   /** Subscribe to live events for a run. Returns an unsubscribe function. */
   subscribe(
     runId: string,

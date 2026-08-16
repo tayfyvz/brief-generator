@@ -276,10 +276,17 @@ const EXTRACT_SYSTEM = [
   "several places or several ways, extract it once with the best quote. Never",
   "return two facts that would tell the AE the same thing.",
   "",
-  "Write each claim as ONE plain sentence, under 25 words, stating the datum",
-  "with its number and date. No interpretation or significance clauses (no",
-  "'which suggests', 'indicating', 'showing that'); the AE draws conclusions,",
-  "you report data. Never use em dashes or en dashes in any text you write.",
+  "Write each claim in DIRECT NOTE FORM, not a full sentence: 'Label: value'.",
+  "Examples: 'Chief: John Smith (jsmith@dept.org, 555-1234)',",
+  "'Engine 3: 2015 Pierce Enforcer pumper, 1500 GPM',",
+  "'FY2025 fire budget: $180,000', 'Open bid: pumper replacement, due 2025-09-01'.",
+  "Keep related data TOGETHER in one claim: a person's name, title, phone, and",
+  "email belong in ONE claim, never split across facts; a truck's unit, year,",
+  "make, model, and specs likewise. Keep claims under 15 words where possible.",
+  "Use a short plain sentence only when note form would lose meaning (some news",
+  "events). No interpretation or significance clauses (no 'which suggests',",
+  "'indicating', 'showing that'); the AE draws conclusions, you report data.",
+  "Never use em dashes or en dashes in any text you write.",
   "",
   "Set usefulness per fact: high = changes what the AE says on this call",
   "(current fleet and its age, money in motion, open bids, decision makers);",
@@ -747,13 +754,15 @@ export async function verify(
           "identical statements, rewordings, the same datum from different sources, " +
           "or one fact whose information is fully contained in a more complete fact " +
           "(a subset is a duplicate of its superset). Keep the single best fact per " +
-          "group (most complete claim, then highest tier, then most recent) as " +
-          "keepFactId and drop ALL the rest. The brief must never show the same " +
+          "group (the claim that packs the most related data together, e.g. a person " +
+          "with their contact info in one claim, then highest tier, then most recent) " +
+          "as keepFactId and drop ALL the rest. The brief must never show the same " +
           "information twice. Restatements are duplicates, never conflicts. " +
           "3) List genuine CONFLICTS: facts that cannot all be true (two different " +
           "chiefs, two different years for the same unit). Resolve each by source tier " +
           "(T1 beats T3) then recency, name the winner in the note, and never silently " +
-          "drop a side. If a group of facts agrees, it is not a conflict. " +
+          "drop a side. Keep every note you write under 15 words, direct and plain. " +
+          "If a group of facts agrees, it is not a conflict. " +
           "Tier-4 facts come from community sources (wikis, social media): when a " +
           "tier 1-3 fact carries the same datum, the tier-4 fact is the duplicate to " +
           "drop; when a tier-4 fact stands alone it survives at low confidence. " +
@@ -881,20 +890,25 @@ export async function synthesize(
               task: "synthesize",
               system:
                 "You write a one-page sales brief for a fire-apparatus account executive from verified, cited facts. " +
-                "The AE is non-technical and has thirty seconds; short and specific beats complete. " +
+                "The AE is non-technical and has thirty seconds; the whole brief must be readable in a few glances. " +
+                "Be DIRECT everywhere: no filler words, no full sentences where a fragment carries the datum. " +
                 "Only reference fact IDs you were given. Rank 'why call today' by sales relevance and recency. " +
-                "Signals must be concrete and actionable: dated events, dollar amounts, aging apparatus, " +
-                "awarded grants, open bids, leadership changes. Never write generic headlines like " +
-                "'active community engagement'; if nothing concrete exists, return fewer signals and " +
-                "note the gap in caveats instead. " +
+                "Signal headlines are telegraphic, under 10 words, concrete and actionable: dated events, " +
+                "dollar amounts, aging apparatus, awarded grants, open bids, leadership changes " +
+                "('$120,000 AFG grant awarded Mar 2025', not a sentence about it). " +
+                "Include a signal detail ONLY when it adds information the headline lacks, one short line max. " +
+                "Never write generic headlines like 'active community engagement'; if nothing concrete exists, " +
+                "return fewer signals and note the gap in caveats instead. " +
+                "NO REPETITION anywhere: each piece of information appears exactly once in the brief. " +
+                "The summary must not restate the signals or the curated facts; a signal must not restate " +
+                "another signal; caveats must not restate anything above them. " +
                 "Curation rules: each section takes ONLY facts of its own category " +
                 "(leadership section: leadership facts; fleet: fleet; money: procurement and funding; news: news). " +
                 "Never pad a section with facts from another category; an empty section is honest and correct, " +
                 "and the gap belongs in caveats instead. Pick at most 5 facts per section, highest usefulness " +
                 "first, and use each fact ID in at most one section. " +
-                "Summary: at most 3 short sentences. Signal details: at most 2 sentences. Caveats: one sentence each, " +
-                "only for gaps that change how the AE approaches the call. " +
-                "Write like a sharp colleague: plain, direct sentences an AE can say out loud. " +
+                "Summary: at most 2 short sentences of orientation (who they are, the one thing that matters now). " +
+                "Caveats: one short line each, only for gaps that change how the AE approaches the call. " +
                 "Never use em dashes or en dashes anywhere in the brief.",
               prompt: [
                 anchorPacket(state.anchor!, state.entityGraph),

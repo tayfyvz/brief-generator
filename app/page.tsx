@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Flame, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PlaceIdForm } from "@/components/place-id-form";
+import { ActiveRuns } from "@/components/run/active-runs";
 import { getRecentBriefs } from "@/lib/db/queries";
 import { relativeDays } from "@/lib/format";
 
@@ -44,6 +45,8 @@ export default async function Home() {
           </Link>
         ))}
       </div>
+
+      <ActiveRuns />
 
       {recent.length > 0 && (
         <section className="w-full max-w-xl">

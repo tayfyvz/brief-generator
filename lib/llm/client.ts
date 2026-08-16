@@ -31,7 +31,9 @@ export interface LlmClient {
   readonly stubbed: boolean;
 }
 
-const MODEL = "claude-opus-5";
+// Sonnet: data collection is outsourced to search/fetch tools; the LLM's job
+// here is shaping and condensing, which does not need the top-tier model.
+const MODEL = "claude-sonnet-5";
 
 class AnthropicLlmClient implements LlmClient {
   readonly stubbed = false;
@@ -42,11 +44,11 @@ class AnthropicLlmClient implements LlmClient {
   }
 
   async structured<T>(req: StructuredRequest<T>): Promise<T> {
-    // Streaming, because thinking is on by default on claude-opus-5 and long
-    // calls (verify over a big fact list) exceed the SDK's non-streaming
-    // duration limit. max_tokens caps thinking plus response text, so leave
-    // generous headroom. The structured-output format still guarantees
-    // schema-valid JSON; the Zod parse below is the final gate.
+    // Streaming, because adaptive thinking is on by default on claude-sonnet-5
+    // and long calls (verify over a big fact list) exceed the SDK's
+    // non-streaming duration limit. max_tokens caps thinking plus response
+    // text, so leave generous headroom. The structured-output format still
+    // guarantees schema-valid JSON; the Zod parse below is the final gate.
     const stream = this.client.messages.stream({
       model: MODEL,
       max_tokens: req.maxTokens ?? 16000,

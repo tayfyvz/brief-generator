@@ -209,8 +209,10 @@ export default async function BriefPage({
               ))}
             </nav>
 
+            {/* Summary spans the full content column so it reflows when the
+                sidebar collapses instead of sitting in a fixed-width block */}
             {content.summary && (
-              <p className="mt-5 max-w-4xl text-[15px] leading-relaxed text-muted-foreground">
+              <p className="mt-5 w-full rounded-lg bg-muted/50 px-4 py-3 text-[15px] leading-relaxed lg:text-base">
                 {content.summary}
               </p>
             )}
