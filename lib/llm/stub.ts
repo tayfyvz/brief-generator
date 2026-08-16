@@ -244,6 +244,13 @@ export function getStubStructuredOutput(task: string, context: unknown): unknown
       const ctx = context as ExtractFactsContext;
       return { facts: FIXTURE_EXTRACTIONS[ctx.page.url] ?? [] };
     }
+    case "verifyFacts": {
+      const ctx = context as { facts: { id: string }[] };
+      return {
+        verdicts: ctx.facts.map((f) => ({ factId: f.id, verdict: "supported" })),
+        conflicts: [],
+      };
+    }
     case "planExpansion": {
       const ctx = context as { round: number };
       if (ctx.round <= 1) {

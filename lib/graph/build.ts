@@ -8,6 +8,7 @@ import {
   resolveEntity,
   shouldContinueExpansion,
   synthesize,
+  verify,
 } from "./nodes";
 import { TRACKS } from "./tracks";
 import type { TrackDef } from "./nodes";
@@ -20,10 +21,10 @@ function track(key: string): TrackDef {
 
 /**
  * Research graph (PLAN §3): anchor → entity → 6-track fan-out → expansion
- * loop ⟲ → synthesize. Tracks run in one parallel superstep and join on
- * planExpansion, which loops until two dry rounds, the round cap, or the
- * run budget. Verify (N4) arrives in build step 7.
- * Node names are spelled out because LangGraph types edges by literal name.
+ * loop ⟲ → verify → synthesize. Tracks run in one parallel superstep and
+ * join on planExpansion, which loops until two dry rounds, the round cap,
+ * or the run budget; the fresh-context verifier then gates what synthesize
+ * may use. Node names are spelled out because LangGraph types edges by name.
  */
 export function buildResearchGraph(checkpointer?: BaseCheckpointSaver) {
   const graph = new StateGraph(ResearchState)
@@ -36,6 +37,7 @@ export function buildResearchGraph(checkpointer?: BaseCheckpointSaver) {
     .addNode("trackNews", makeTrackNode(track("news")))
     .addNode("trackDiscovery", makeTrackNode(track("discovery")))
     .addNode("planExpansion", planExpansion)
+    .addNode("verify", verify)
     .addNode("synthesize", synthesize)
     .addEdge(START, "resolveAnchor")
     .addEdge("resolveAnchor", "resolveEntity")
@@ -53,8 +55,9 @@ export function buildResearchGraph(checkpointer?: BaseCheckpointSaver) {
     .addEdge("trackDiscovery", "planExpansion")
     .addConditionalEdges("planExpansion", shouldContinueExpansion, [
       "planExpansion",
-      "synthesize",
+      "verify",
     ])
+    .addEdge("verify", "synthesize")
     .addEdge("synthesize", END);
 
   return graph.compile(checkpointer ? { checkpointer } : undefined);

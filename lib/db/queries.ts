@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
 import { getDb } from "./client";
 import { briefs, departments, facts, sources } from "./schema";
 import type { Anchor } from "@/lib/schemas/anchor";
@@ -64,10 +64,17 @@ export async function getBriefPageData(placeId: string) {
   const brief = briefRows[0] ?? null;
   if (!brief) return { department, brief: null, facts: [], sources: [] };
 
+  // Rejected facts are never shown (PLAN hard rule) — everything else is,
+  // with its verification state rendered honestly.
   const factRows = await db
     .select()
     .from(facts)
-    .where(eq(facts.runId, brief.runId));
+    .where(
+      and(
+        eq(facts.runId, brief.runId),
+        or(isNull(facts.verification), ne(facts.verification, "rejected")),
+      ),
+    );
   const sourceRows = await db
     .select({
       id: sources.id,

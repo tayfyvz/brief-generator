@@ -66,6 +66,28 @@ export const expansionPlanSchema = z.object({
 });
 export type ExpansionPlan = z.infer<typeof expansionPlanSchema>;
 
+/** N4 verify output: fresh-context judgment of each (claim, quote) pair. */
+export const verifyVerdictsSchema = z.object({
+  verdicts: z.array(
+    z.object({
+      factId: z.string(),
+      /** supported = quote genuinely backs the claim for THIS department. */
+      verdict: z.enum(["supported", "unsupported"]),
+      note: z.string().optional(),
+    }),
+  ),
+  /** Groups of facts that contradict each other (surfaced, never silently picked). */
+  conflicts: z.array(
+    z.object({
+      topic: z.string(),
+      factIds: z.array(z.string()),
+      /** Which fact wins and why (tier first, then recency). */
+      note: z.string(),
+    }),
+  ),
+});
+export type VerifyVerdicts = z.infer<typeof verifyVerdictsSchema>;
+
 /** N5 synthesize output — maps onto BriefContent (generatedAt added by code). */
 export const llmBriefSchema = z.object({
   summary: z.string(),

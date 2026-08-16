@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { briefs, entities as entitiesTable } from "@/lib/db/schema";
+import { briefs, entities as entitiesTable, facts as factsTable } from "@/lib/db/schema";
+import { isStale } from "@/lib/research/staleness";
 import { getLlmClient } from "@/lib/llm/client";
 import { anchorPacket } from "@/lib/llm/prompts/anchor";
 import { SOURCE_PLAYBOOK } from "@/lib/llm/prompts/playbook";
@@ -22,6 +23,7 @@ import {
   extractedFactsSchema,
   llmBriefSchema,
   trackPlanSchema,
+  verifyVerdictsSchema,
 } from "@/lib/schemas/llm";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { EmitFn } from "@/lib/schemas/events";
@@ -481,16 +483,131 @@ function leadKey(kind: string, query: string): string {
 /** Loop control for N3: two dry rounds, round cap, or budget exhaustion. */
 export function shouldContinueExpansion(
   state: ResearchStateType,
-): "planExpansion" | "synthesize" {
+): "planExpansion" | "verify" {
   const env = getEnv();
-  if (state.dryRounds >= 2) return "synthesize";
+  if (state.dryRounds >= 2) return "verify";
   if (state.round >= env.MAX_ROUNDS) {
     recordCap(state.runId, "max_rounds");
-    return "synthesize";
+    return "verify";
   }
   // Budget exhausted mid-round: another round cannot search or fetch.
-  if (!hasBudget(state.runId)) return "synthesize";
+  if (!hasBudget(state.runId)) return "verify";
   return "planExpansion";
+}
+
+/**
+ * N4 — fresh-context verifier: does the verbatim quote actually support the
+ * claim for THIS department? Conflicts are resolved by tier + recency and
+ * surfaced in the brief; unsupported facts are marked rejected and never
+ * shown; facts older than ~18 months get a staleness flag.
+ */
+export async function verify(
+  state: ResearchStateType,
+  config?: LangGraphRunnableConfig,
+): Promise<Update> {
+  if (!state.anchor) throw new Error("verify requires an anchor");
+  const anchor = state.anchor;
+  const emit = emitterOf(config);
+  emit({ type: "phase", phase: "verify", status: "start" });
+  const factList = state.facts;
+  if (factList.length === 0) {
+    emit({ type: "phase", phase: "verify", status: "done" });
+    return { verifiedFacts: [], conflicts: [] };
+  }
+
+  const warnings: Warning[] = [];
+  const pushWarning = (w: Warning) => {
+    warnings.push(w);
+    emit({ type: "warning", warning: w });
+  };
+  const llm = getLlmClient();
+
+  const verdicts = await withDegrade(
+    () =>
+      llm.structured({
+        task: "verifyFacts",
+        system:
+          "You are a fresh-context verifier for a fire-department sales brief. " +
+          "For each fact, judge ONLY whether the verbatim quote supports the claim " +
+          "for the anchored department ('supported' / 'unsupported'). Then list facts " +
+          "that contradict each other; resolve each conflict by source tier (T1 beats T3) " +
+          "then recency, and name the winner in the note — never silently drop a side.",
+        prompt: [
+          anchorPacket(anchor),
+          "## Facts (id · tier · as-of · claim · quote)",
+          ...factList.map(
+            (f) =>
+              `- ${f.id} · T${f.tier} · ${f.asOfDate ?? "undated"} · ${f.claim} · "${f.quote}"`,
+          ),
+        ].join("\n"),
+        schema: verifyVerdictsSchema,
+        context: {
+          facts: factList.map((f) => ({
+            id: f.id,
+            claim: f.claim,
+            quote: f.quote,
+            tier: f.tier,
+            asOfDate: f.asOfDate,
+          })),
+        },
+      }),
+    // Fail soft: an unavailable verifier keeps facts (visibly) rather than
+    // dropping everything.
+    {
+      verdicts: factList.map((f) => ({ factId: f.id, verdict: "supported" as const })),
+      conflicts: [],
+    },
+    "verify",
+    pushWarning,
+  );
+
+  const verdictById = new Map(verdicts.verdicts.map((v) => [v.factId, v.verdict]));
+  const knownIds = new Set(factList.map((f) => f.id));
+  const conflicts = verdicts.conflicts
+    .map((c) => ({ ...c, factIds: c.factIds.filter((id) => knownIds.has(id)) }))
+    .filter((c) => c.factIds.length >= 2);
+  const conflictedIds = new Set(conflicts.flatMap((c) => c.factIds));
+
+  const rejectedIds = factList
+    .filter((f) => verdictById.get(f.id) === "unsupported")
+    .map((f) => f.id);
+  const surviving = factList.filter((f) => verdictById.get(f.id) !== "unsupported");
+  const verifiedIds = surviving.filter((f) => !conflictedIds.has(f.id)).map((f) => f.id);
+  const now = new Date();
+  const staleIds = factList.filter((f) => isStale(f.asOfDate, now)).map((f) => f.id);
+
+  const db = getDb();
+  if (rejectedIds.length > 0) {
+    await db
+      .update(factsTable)
+      .set({ verification: "rejected" })
+      .where(inArray(factsTable.id, rejectedIds));
+    pushWarning({
+      scope: "verify",
+      message: `${rejectedIds.length} fact(s) failed verification and were dropped from the brief.`,
+    });
+  }
+  if (conflictedIds.size > 0) {
+    await db
+      .update(factsTable)
+      .set({ verification: "conflicted" })
+      .where(inArray(factsTable.id, [...conflictedIds]));
+  }
+  if (verifiedIds.length > 0) {
+    await db
+      .update(factsTable)
+      .set({ verification: "verified" })
+      .where(inArray(factsTable.id, verifiedIds));
+  }
+  if (staleIds.length > 0) {
+    await db
+      .update(factsTable)
+      .set({ stale: true })
+      .where(inArray(factsTable.id, staleIds));
+  }
+
+  emit({ type: "phase", phase: "verify", status: "done" });
+  return { verifiedFacts: surviving, conflicts, warnings };
 }
 
 /** N5 — verified facts only → persisted brief JSON. */
@@ -503,7 +620,8 @@ export async function synthesize(
   emit({ type: "phase", phase: "synthesize", status: "start" });
   const warnings: Warning[] = [];
   const llm = getLlmClient();
-  const factList = state.facts;
+  // Verified facts only (PLAN §3 N5); fall back to raw facts if N4 was skipped.
+  const factList = state.verifiedFacts ?? state.facts;
 
   const factContext = factList.map((f) => ({
     id: f.id,
@@ -566,10 +684,12 @@ export async function synthesize(
       money: onlyKnown(llmBrief.curated.money),
       news: onlyKnown(llmBrief.curated.news),
     },
-    conflicts: llmBrief.conflicts.map((c) => ({
-      ...c,
-      factIds: onlyKnown(c.factIds),
-    })),
+    conflicts: [
+      // Conflicts detected by the verifier come first; the synthesis model
+      // may add more, but never silently resolves either kind.
+      ...state.conflicts.map((c) => ({ ...c, factIds: onlyKnown(c.factIds) })),
+      ...llmBrief.conflicts.map((c) => ({ ...c, factIds: onlyKnown(c.factIds) })),
+    ].filter((c) => c.factIds.length > 0),
     caveats: llmBrief.caveats,
     generatedAt: new Date().toISOString(),
   });
