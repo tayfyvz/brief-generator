@@ -226,7 +226,9 @@ export function BriefChat({ placeId }: { placeId: string }) {
         ))}
         {pending && (
           <div className="flex max-w-[85%] items-center gap-2 rounded-xl bg-accent px-3 py-2 text-sm text-muted-foreground">
-            <Siren className="siren-pulse size-4 shrink-0 text-primary" />
+            <div className="siren-beacon shrink-0">
+              <Siren className="siren-pulse size-4 text-primary" />
+            </div>
             Checking the brief…
           </div>
         )}

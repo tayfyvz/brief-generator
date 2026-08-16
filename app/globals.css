@@ -202,6 +202,52 @@
   }
 }
 
+/* Brief chat: rotating light beams sweeping past the pending siren. The
+   short container clips the spinning wedge disc to a horizontal band, so the
+   beams only flash out the sides of the lamp — like a beacon seen edge-on. */
+.siren-beacon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 1.5rem;
+  overflow: hidden;
+}
+.siren-beacon::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: -2.25rem 0 0 -2.25rem;
+  border-radius: 9999px;
+  background: repeating-conic-gradient(
+    from 0deg,
+    var(--color-primary) 0deg 16deg,
+    transparent 16deg 60deg
+  );
+  opacity: 0.45;
+  mask-image: radial-gradient(
+    circle,
+    transparent 30%,
+    black 40%,
+    transparent 85%
+  );
+  -webkit-mask-image: radial-gradient(
+    circle,
+    transparent 30%,
+    black 40%,
+    transparent 85%
+  );
+  animation: siren-rays 2.4s linear infinite;
+}
+@keyframes siren-rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Brief chat panel: pops from its corner on open, shrinks back on close.
    The component falls back to instant close under reduced motion, since a
    disabled pop-out animation would never fire animationend. */
@@ -292,6 +338,7 @@
   .shimmer,
   .live-dot::after,
   .siren-pulse,
+  .siren-beacon::before,
   .chat-pop-in,
   .chat-pop-out {
     animation: none;
