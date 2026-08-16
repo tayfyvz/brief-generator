@@ -5,8 +5,16 @@ import { isStale } from "@/lib/research/staleness";
 import { getLlmClient } from "@/lib/llm/client";
 import { anchorPacket } from "@/lib/llm/prompts/anchor";
 import { SOURCE_PLAYBOOK } from "@/lib/llm/prompts/playbook";
+import { SELECT_RESULTS_SYSTEM } from "@/lib/llm/prompts/select";
+import {
+  EXTRACT_SYSTEM,
+  QUOTE_REPAIR_NOTE,
+  TIER4_EXTRACT_NOTE,
+} from "@/lib/llm/prompts/extract";
+import { VERIFY_SYSTEM } from "@/lib/llm/prompts/verify";
+import { SYNTHESIZE_SYSTEM } from "@/lib/llm/prompts/synthesize";
 import { saveSnapshot } from "@/lib/research/snapshots";
-import { quoteAppearsIn, storeExtractedFacts } from "@/lib/research/facts";
+import { storeExtractedFacts } from "@/lib/research/facts";
 import { anchorTerms, extractionSlice } from "@/lib/research/markdown";
 import { tierForUrl } from "@/lib/research/tiering";
 import { getFetchClient } from "@/lib/tools/firecrawl";
@@ -51,30 +59,6 @@ function emitterOf(config?: LangGraphRunnableConfig): EmitFn {
   return emit ?? (() => undefined);
 }
 
-/**
- * Relevance gate over search results (the fetch budget is the scarcest
- * resource): a cheap low-effort call picks which URLs deserve a fetch.
- * Observed failure mode without it: "Lexington" queries burning the whole
- * budget on Lexington KY/IL/TN pages and 200KB out-of-scope PDFs, leaving
- * zero fetches for the expansion round.
- */
-const SELECT_RESULTS_SYSTEM = [
-  "You triage web search results for a fire-department research pipeline.",
-  "Pick ONLY the URLs genuinely worth fetching for the anchored department.",
-  "Reject without mercy:",
-  "results about similarly-named departments or places in a different city,",
-  "county, or state than the anchor (check the URL domain and the snippet;",
-  "a .gov domain of the wrong state or city is an automatic reject);",
-  "bulk documents where the department would be one line among thousands",
-  "(statewide budget archives, old appropriation lists, mutual-aid rosters);",
-  "pages more than a decade old with no bearing on the current fleet or budget;",
-  "generic advice, product marketing, or directory spam.",
-  "Prefer: the department's own pages, its municipality/township/county,",
-  "meeting minutes and budgets naming it, dealer/manufacturer delivery pages",
-  "about it, local press about it, and its social media or wiki pages.",
-  "Return the urls best-first; return an empty list when nothing qualifies.",
-].join("\n");
-
 async function selectRelevantUrls(opts: {
   llm: LlmClient;
   anchor: Anchor;
@@ -94,8 +78,8 @@ async function selectRelevantUrls(opts: {
       llm.structured({
         task: "selectResults",
         system: SELECT_RESULTS_SYSTEM,
+        prefix: anchorPacket(anchor, entityGraph),
         prompt: [
-          anchorPacket(anchor, entityGraph),
           `## Why we searched\n${purpose}`,
           "## Search results",
           ...results.map(
@@ -242,106 +226,8 @@ const MAX_FETCHES_PER_QUERY = 2;
 /** Web-sparse departments get one extra fetch per query in expansion rounds. */
 const SPARSE_FACT_THRESHOLD = 15;
 
-/**
- * Shared system prompt for fact extraction (tracks and expansion). The rubric
- * is the relevance gate: it decides what an AE sees, so it errs toward
- * dropping trivia rather than keeping it.
- */
-const EXTRACT_SYSTEM = [
-  "You extract sales-relevant facts about ONE fire department from ONE page,",
-  "for an account executive who sells fire apparatus. The AE is non-technical",
-  "and has thirty seconds: extract FEW, high-value facts, never everything the",
-  "page contains. Return at most 10 facts per page; fewer is better. One",
-  "exception: apparatus rosters. When the page lists the department's current",
-  "fleet, extract EVERY current apparatus, one fact per unit; never truncate",
-  "a roster to fit the cap.",
-  "Every fact needs a claim plus a VERBATIM quote: one contiguous span copied",
-  "character-for-character from the page text. No paraphrasing, no stitching",
-  "separate sentences together, no fixing typos. Facts with inexact quotes are dropped.",
-  "The quote must CONTAIN the decisive datum the claim asserts: the number,",
-  "name, or date itself, never just its label. On form or table pages quote",
-  "the full row or line that holds the value, value included ('Total revenue",
-  "| 9 | 86,777', not 'Total revenue').",
-  "If the page is about a similarly-named department in a different city, county,",
-  "or state than the anchor, return an EMPTY facts list. Wrong-department",
-  "contamination is worse than no facts.",
-  "",
-  "Extract ONLY what could matter on a sales call:",
-  "current apparatus (unit, year, make, model, specs) and its age; planned or",
-  "recent purchases, refurbishments, and retirements; open bids, RFPs, and dealer",
-  "relationships; budgets, grants, loans, and fundraising capacity with amounts",
-  "and dates; who runs the department and who signs purchases, with contact info",
-  "beyond what the anchor already shows; recent news that gives a reason to call.",
-  "",
-  "Do NOT extract:",
-  "the address, phone, or website already listed in the anchor;",
-  "identity or directory confirmations (that the department exists, is located",
-  "where the anchor says, or appears in a listing), record IDs, or observations",
-  "about what a website contains or lacks;",
-  "mission statements, mottos, or service descriptions;",
-  "membership requirements, recruiting logistics, or training benefits;",
-  "community event logistics (parades, Santa runs, holiday displays), unless the",
-  "event demonstrably raises money, then extract the fundraising angle only;",
-  "department history from before roughly 2012, unless that apparatus is still",
-  "in service today or the history directly informs a replacement cycle;",
-  "from county or municipal budget documents, lines that do not touch this",
-  "department, its parent, volunteer company contributions, or apparatus capital;",
-  "state or national program facts (grant program totals, application windows)",
-  "not tied to this department: at most ONE such fact per page, usefulness low.",
-  "",
-  "One fact per underlying data point. If the page states the same thing in",
-  "several places or several ways, extract it once with the best quote. Never",
-  "return two facts that would tell the AE the same thing.",
-  "",
-  "Write each claim in DIRECT NOTE FORM, not a full sentence: 'Label: value'.",
-  "Examples: 'Chief: John Smith (jsmith@dept.org, 555-1234)',",
-  "'Engine 3: 2015 Pierce Enforcer pumper, 1500 GPM',",
-  "'FY2025 fire budget: $180,000', 'Open bid: pumper replacement, due 2025-09-01'.",
-  "Keep related data TOGETHER in one claim: a person's name, title, phone, and",
-  "email belong in ONE claim, never split across facts; a truck's unit, year,",
-  "make, model, and specs likewise. Keep claims under 15 words where possible.",
-  "Use a short plain sentence only when note form would lose meaning (some news",
-  "events). No interpretation or significance clauses (no 'which suggests',",
-  "'indicating', 'showing that'); the AE draws conclusions, you report data.",
-  "Never use em dashes or en dashes in any text you write.",
-  "",
-  "Set usefulness per fact: high = changes what the AE says on this call",
-  "(current fleet and its age, money in motion, open bids, decision makers);",
-  "medium = helpful background (buying process, staffing model, service area);",
-  "low = context only. When in doubt between extracting a low-value fact and",
-  "skipping it, skip it.",
-].join("\n");
-
-/**
- * Extra rubric for tier-4 (community/enthusiast) pages. These ARE citable;
- * for tiny volunteer departments the fandom wiki is often the only apparatus
- * roster in existence, and a labeled community fact beats an empty fleet
- * section. Facts land at low confidence with an "unconfirmed" badge, and the
- * expansion loop still tries to re-find each datum in a better source.
- */
-const TIER4_EXTRACT_NOTE = [
-  "NOTE: this page is a community or enthusiast source (wiki, social media,",
-  "forum). Extract only concrete, checkable data: apparatus roster entries",
-  "(unit number, year, make, model, specs), stations, named chiefs and",
-  "officers, deliveries, retirements, fundraising drives. Skip rumors,",
-  "speculation, and photo chatter. These facts render as unconfirmed",
-  "community data, so precision matters more than coverage.",
-].join("\n");
-
 /** Pages shorter than this are login walls / JS shells; extracting is noise. */
 const THIN_PAGE_CHARS = 200;
-
-const QUOTE_REPAIR_NOTE = [
-  "REPAIR TASK: each fact below was extracted from this page but DROPPED",
-  "because its quote was not found verbatim in the page text. Re-emit every",
-  "fact the page genuinely supports with a corrected quote: one contiguous",
-  "span copied character-for-character from the page text below, including",
-  "any markdown pipes, brackets, or asterisks that appear mid-span. Each",
-  "corrected quote must contain the decisive number, name, or date the claim",
-  "asserts, not just its label; on table rows quote the whole row. Keep",
-  "claims unchanged unless the page contradicts them. Omit facts the page",
-  "does not actually support. Do not add new facts.",
-].join("\n");
 
 /**
  * Shared per-page pipeline for tracks and expansion: extract facts, store
@@ -375,19 +261,21 @@ async function extractAndStore(opts: {
 
   const promptFor = (extra: string[]) =>
     [
-      anchorPacket(state.anchor!, state.entityGraph),
       ...contextLines,
       ...(tier >= 4 ? [TIER4_EXTRACT_NOTE] : []),
       ...extra,
       `## Page: ${page.url}`,
       extractionSlice(page.markdown, anchorTerms(state.anchor!)),
     ].join("\n\n");
+  // Stable across every extraction call in the run: cached after the first.
+  const prefix = anchorPacket(state.anchor!, state.entityGraph);
 
   const extraction = await withDegrade(
     () =>
       llm.structured({
         task: "extractFacts",
         system: EXTRACT_SYSTEM,
+        prefix,
         prompt: promptFor([]),
         schema: extractedFactsSchema,
         context: { page, anchor: state.anchor },
@@ -408,17 +296,17 @@ async function extractAndStore(opts: {
   });
   const allStored = [...stored];
 
-  if (droppedQuotes > 0) {
-    const failed = extraction.facts.filter((f) => !quoteAppearsIn(f.quote, page.markdown));
+  if (droppedQuotes.length > 0) {
     const repair = await withDegrade(
       () =>
         llm.structured({
           task: "extractFacts",
           system: EXTRACT_SYSTEM,
+          prefix,
           prompt: promptFor([
             QUOTE_REPAIR_NOTE,
             "## Dropped facts to repair (claim · failed quote)",
-            ...failed.map((f) => `- ${f.claim} · "${f.quote}"`),
+            ...droppedQuotes.map((f) => `- ${f.claim} · "${f.quote}"`),
           ]),
           schema: extractedFactsSchema,
           context: { page, anchor: state.anchor },
@@ -437,10 +325,10 @@ async function extractAndStore(opts: {
       round,
     });
     allStored.push(...repaired);
-    if (stillDropped > 0) {
+    if (stillDropped.length > 0) {
       pushWarning({
         scope: `${scope}:verify-quote`,
-        message: `${stillDropped} fact(s) dropped after repair: quote not found verbatim in ${page.url}`,
+        message: `${stillDropped.length} fact(s) dropped after repair: quote not found verbatim in ${page.url}`,
       });
     }
   }
@@ -500,9 +388,12 @@ export function makeTrackNode(track: TrackDef) {
             "Return focused queries an analyst would run. Every query MUST include the " +
             "department's city and state (add the county when useful); many US departments " +
             "share names, and an unqualified query surfaces the wrong one.",
+          // Anchor + playbook are identical for all six parallel tracks:
+          // one cache write, five reads.
+          prefix: [anchorPacket(anchor, state.entityGraph), SOURCE_PLAYBOOK].join(
+            "\n\n",
+          ),
           prompt: [
-            anchorPacket(anchor, state.entityGraph),
-            SOURCE_PLAYBOOK,
             `## Track: ${track.title}`,
             track.focus,
             `Return up to ${MAX_QUERIES_PER_TRACK} search queries.`,
@@ -667,9 +558,10 @@ export async function planExpansion(
           "queries against official and press sources. Then play completeness critic: " +
           "what would an AE ask that the facts still can't answer? Return no leads when " +
           "another round would not add sales-relevant facts.",
+        prefix: [anchorPacket(anchor, state.entityGraph), SOURCE_PLAYBOOK].join(
+          "\n\n",
+        ),
         prompt: [
-          anchorPacket(anchor, state.entityGraph),
-          SOURCE_PLAYBOOK,
           `## Round ${round} of ${getEnv().MAX_ROUNDS}`,
           "## Facts so far",
           ...state.facts.map((f) => `- [${f.category}] ${f.claim}`),
@@ -867,40 +759,7 @@ export async function verify(
     () =>
       llm.structured({
         task: "verifyFacts",
-        system:
-          "You are a fresh-context verifier for a fire-department sales brief. " +
-          "Three jobs, in order. " +
-          "1) For each fact, judge ONLY whether the verbatim quote supports the claim " +
-          "for the anchored department ('supported' / 'unsupported'). Also mark " +
-          "'unsupported' any fact that carries no sales value at all: identity or " +
-          "directory confirmations, record IDs, notes about what a website lacks. " +
-          "Small-but-real data is NOT valueless: a modest grant, a single contact " +
-          "number, or one old truck still counts; when in doubt, keep the fact. " +
-          "Who signs the purchase order IS sales data: legal/contracting entity, " +
-          "incorporation status, budget owner, and finances (revenue, assets, fund " +
-          "balances) are never identity trivia; keep them. " +
-          "2) Group DUPLICATES aggressively, across categories. Two facts are " +
-          "duplicates whenever a reader learns nothing new from the second one: " +
-          "identical statements, rewordings, the same datum from different sources, " +
-          "or one fact whose information is fully contained in a more complete fact " +
-          "(a subset is a duplicate of its superset). Keep the single best fact per " +
-          "group (the claim that packs the most related data together, e.g. a person " +
-          "with their contact info in one claim, then highest tier, then most recent) " +
-          "as keepFactId and drop ALL the rest. The brief must never show the same " +
-          "information twice. Restatements are duplicates, never conflicts. " +
-          "3) List genuine CONFLICTS: facts that cannot all be true (two different " +
-          "chiefs, two different years for the same unit). Resolve each by source tier " +
-          "(T1 beats T3) then recency, name the winner in the note, and never silently " +
-          "drop a side. Exception: national directory listings are often years stale, " +
-          "so a dated fact from ANY source beats an undated directory datum, tier " +
-          "notwithstanding. A dated fact that a person left a role beats an older " +
-          "fact that they held it. Keep every note you write under 15 words, direct and plain. " +
-          "If a group of facts agrees, it is not a conflict. Two phone numbers, " +
-          "addresses, or contact channels can all be real at once: not a conflict. " +
-          "Tier-4 facts come from community sources (wikis, social media): when a " +
-          "tier 1-3 fact carries the same datum, the tier-4 fact is the duplicate to " +
-          "drop; when a tier-4 fact stands alone it survives at low confidence. " +
-          "Never use em dashes in any text you write.",
+        system: VERIFY_SYSTEM,
         prompt: [
           anchorPacket(anchor),
           "## Facts (id · tier · as-of · claim · quote)",
@@ -942,39 +801,24 @@ export async function verify(
 
   const db = getDb();
   if (applied.rejectedIds.length > 0) {
-    await db
-      .update(factsTable)
-      .set({ verification: "rejected" })
-      .where(inArray(factsTable.id, applied.rejectedIds));
     pushWarning({
       scope: "verify",
       message: `${applied.rejectedIds.length} fact(s) failed verification and were dropped from the brief.`,
     });
   }
-  if (applied.duplicateIds.length > 0) {
-    await db
-      .update(factsTable)
-      .set({ verification: "duplicate" })
-      .where(inArray(factsTable.id, applied.duplicateIds));
-  }
-  if (applied.conflictedIds.length > 0) {
-    await db
-      .update(factsTable)
-      .set({ verification: "conflicted" })
-      .where(inArray(factsTable.id, applied.conflictedIds));
-  }
-  if (applied.verifiedIds.length > 0) {
-    await db
-      .update(factsTable)
-      .set({ verification: "verified" })
-      .where(inArray(factsTable.id, applied.verifiedIds));
-  }
-  if (staleIds.length > 0) {
-    await db
-      .update(factsTable)
-      .set({ stale: true })
-      .where(inArray(factsTable.id, staleIds));
-  }
+  // Disjoint id sets; run the status writes concurrently.
+  const statusWrites: { ids: string[]; set: Partial<typeof factsTable.$inferInsert> }[] = [
+    { ids: applied.rejectedIds, set: { verification: "rejected" } },
+    { ids: applied.duplicateIds, set: { verification: "duplicate" } },
+    { ids: applied.conflictedIds, set: { verification: "conflicted" } },
+    { ids: applied.verifiedIds, set: { verification: "verified" } },
+    { ids: staleIds, set: { stale: true } },
+  ];
+  await Promise.all(
+    statusWrites
+      .filter((w) => w.ids.length > 0)
+      .map((w) => db.update(factsTable).set(w.set).where(inArray(factsTable.id, w.ids))),
+  );
 
   emit({ type: "phase", phase: "verify", status: "done" });
   return {
@@ -1028,33 +872,7 @@ export async function synthesize(
           () =>
             llm.structured({
               task: "synthesize",
-              system:
-                "You write a one-page sales brief for a fire-apparatus account executive from verified, cited facts. " +
-                "The AE is non-technical and has thirty seconds; the whole brief must be readable in a few glances. " +
-                "Be DIRECT everywhere: no filler words, no full sentences where a fragment carries the datum. " +
-                "Reference facts ONLY by the exact short IDs you were given (F1, F2, ...), copied verbatim. " +
-                "Rank 'why call today' by sales relevance and recency. " +
-                "Signal headlines are telegraphic, under 10 words, concrete and actionable: dated events, " +
-                "dollar amounts, aging apparatus, awarded grants, open bids, leadership changes " +
-                "('$120,000 AFG grant awarded Mar 2025', not a sentence about it). " +
-                "Include a signal detail ONLY when it adds information the headline lacks, one short line max. " +
-                "Never write generic headlines like 'active community engagement'; if nothing concrete exists, " +
-                "return fewer signals and note the gap in caveats instead. Aging apparatus IS concrete: " +
-                "an engine over 20 years old is always a signal worth surfacing. " +
-                "NO REPETITION in the PROSE you write: the summary must not restate the signals; a signal " +
-                "must not restate another signal; caveats must not restate anything above them. " +
-                "Selecting fact IDs is NOT repetition: signals cite factIds, and curated sections list " +
-                "factIds, even for facts a signal or the summary touches. Always return them. " +
-                "Curation rules: ALWAYS fill each section's curated list with up to 5 of its best fact IDs " +
-                "whenever facts of that category exist; an empty curated list is wrong unless the category " +
-                "truly has no facts. Each section takes ONLY facts of its own category " +
-                "(leadership section: leadership facts; fleet: fleet; money: procurement and funding; news: news). " +
-                "Never pad a section with facts from another category; an empty section is honest and correct, " +
-                "and the gap belongs in caveats instead. Rank by usefulness, and use each fact ID in at most " +
-                "one section. " +
-                "Summary: at most 2 short sentences of orientation (who they are, the one thing that matters now). " +
-                "Caveats: one short line each, only for gaps that change how the AE approaches the call. " +
-                "Never use em dashes or en dashes anywhere in the brief.",
+              system: SYNTHESIZE_SYSTEM,
               prompt: [
                 anchorPacket(state.anchor!, state.entityGraph),
                 "## Verified facts (id · category · usefulness · claim · as-of)",

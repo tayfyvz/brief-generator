@@ -15,6 +15,14 @@ export interface StructuredRequest<T> {
   /** Stable task name; labels the call and routes the stub ("resolveEntity"…). */
   task: string;
   system: string;
+  /**
+   * Stable per-run prompt prefix (anchor packet, playbook). Rendered before
+   * `prompt`; on Anthropic it carries a cache breakpoint so the dozens of
+   * same-task calls in a run reuse the cached system+prefix tokens instead
+   * of re-paying for them. Content here must be byte-identical across calls
+   * within a run or the cache never hits.
+   */
+  prefix?: string;
   prompt: string;
   schema: z.ZodType<T>;
   /**
@@ -57,17 +65,47 @@ class AnthropicLlmClient implements LlmClient {
     // non-streaming duration limit. max_tokens caps thinking plus response
     // text, so leave generous headroom. The structured-output format still
     // guarantees schema-valid JSON; the Zod parse below is the final gate.
+    //
+    // Cache breakpoints: one on the system prompt (identical for every call
+    // of a task) and one on the per-run prefix. Prefixes below the model's
+    // cacheable minimum silently skip caching, so this is always safe.
     const stream = this.client.messages.stream({
       model: MODEL_BY_TASK[req.task] ?? DEFAULT_MODEL,
       max_tokens: req.maxTokens ?? 16000,
-      system: req.system,
-      messages: [{ role: "user", content: req.prompt }],
+      system: [
+        {
+          type: "text",
+          text: req.system,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [
+        {
+          role: "user",
+          content: req.prefix
+            ? [
+                {
+                  type: "text",
+                  text: req.prefix,
+                  cache_control: { type: "ephemeral" },
+                },
+                { type: "text", text: req.prompt },
+              ]
+            : req.prompt,
+        },
+      ],
       output_config: {
         format: zodOutputFormat(req.schema),
         ...(req.effort ? { effort: req.effort } : {}),
       },
     });
     const response = await stream.finalMessage();
+    if (process.env.DEBUG_LLM) {
+      const u = response.usage;
+      console.log(
+        `[llm] ${req.task}: in=${u.input_tokens} cache_write=${u.cache_creation_input_tokens ?? 0} cache_read=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens}`,
+      );
+    }
     if (response.stop_reason === "refusal") {
       throw new Error(`LLM refused task "${req.task}"`);
     }
@@ -112,7 +150,10 @@ class OpenAiLlmClient implements LlmClient {
             role: "system",
             content: `${req.system}\nRespond with a single JSON object matching the required schema; no prose.`,
           },
-          { role: "user", content: req.prompt },
+          {
+            role: "user",
+            content: req.prefix ? `${req.prefix}\n\n${req.prompt}` : req.prompt,
+          },
         ],
         response_format: {
           type: "json_schema",

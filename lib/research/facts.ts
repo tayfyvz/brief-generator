@@ -41,14 +41,27 @@ export function normalizeAsOfDate(input: string | null | undefined): string | nu
 
 /**
  * Containment check for verbatim quotes: exact (whitespace-insensitive)
- * first, then markup-insensitive token matching as the fallback.
+ * first, then markup-insensitive token matching as the fallback. The matcher
+ * form normalizes the page once and checks many quotes against it; the
+ * per-page passes dominate on long pages, so batch callers must not redo
+ * them per fact.
  */
+export function makeQuoteMatcher(markdown: string): (quote: string) => boolean {
+  const normalizedPage = normalize(markdown);
+  let tokenizedPage: string | undefined;
+  return (quote: string) => {
+    const q = normalize(quote);
+    if (q.length === 0) return false;
+    if (normalizedPage.includes(q)) return true;
+    const qt = tokenize(quote);
+    if (qt.length === 0) return false;
+    tokenizedPage ??= tokenize(markdown);
+    return tokenizedPage.includes(qt);
+  };
+}
+
 export function quoteAppearsIn(quote: string, markdown: string): boolean {
-  const q = normalize(quote);
-  if (q.length === 0) return false;
-  if (normalize(markdown).includes(q)) return true;
-  const qt = tokenize(quote);
-  return qt.length > 0 && tokenize(markdown).includes(qt);
+  return makeQuoteMatcher(markdown)(quote);
 }
 
 /**
@@ -97,11 +110,15 @@ export async function storeExtractedFacts(opts: {
   pageMarkdown: string;
   extracted: ExtractedFact[];
   round: number;
-}): Promise<{ stored: StoredFact[]; droppedQuotes: number }> {
+}): Promise<{ stored: StoredFact[]; droppedQuotes: ExtractedFact[] }> {
   const { runId, placeId, sourceId, tier, pageMarkdown, extracted, round } = opts;
 
-  const withQuotes = extracted.filter((f) => quoteAppearsIn(f.quote, pageMarkdown));
-  const droppedQuotes = extracted.length - withQuotes.length;
+  const quoteOnPage = makeQuoteMatcher(pageMarkdown);
+  const withQuotes: ExtractedFact[] = [];
+  const droppedQuotes: ExtractedFact[] = [];
+  for (const f of extracted) {
+    (quoteOnPage(f.quote) ? withQuotes : droppedQuotes).push(f);
+  }
 
   // Synchronous claim: drop quotes another track already stored this run.
   const seen = quoteSetFor(runId);
