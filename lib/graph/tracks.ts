@@ -1,5 +1,8 @@
 import type { TrackDef } from "./nodes";
 
+const place = (a: { city?: string; state?: string }) =>
+  [a.city, a.state].filter(Boolean).join(" ");
+
 /** The six parallel research tracks. */
 export const TRACKS: TrackDef[] = [
   {
@@ -9,6 +12,7 @@ export const TRACKS: TrackDef[] = [
       "Find who runs the department and who to call: chief and command staff, " +
       "board/committee members with budget authority, executive administrators, " +
       "phone numbers, and office hours.",
+    seedQueries: (a) => [`${place(a)} fire chief ${a.name}`],
   },
   {
     key: "fleet",
@@ -33,6 +37,13 @@ export const TRACKS: TrackDef[] = [
       "Follow the money: capital budgets and bond ordinances for apparatus, " +
       "FEMA AFG/SAFER awards, congressionally directed spending, state grants, " +
       "council minutes approving purchases; with amounts, dates, and status.",
+    // Nearly every US volunteer department files a Form 990; local community
+    // foundations publish their fire-equipment grants. Both surfaced real
+    // money data for a department with no web presence of its own.
+    seedQueries: (a) => [
+      `${a.name} ${place(a)} IRS Form 990 ProPublica`,
+      `${[a.county, a.state].filter(Boolean).join(" ")} community foundation grant fire department ${a.city ?? ""}`.trim(),
+    ],
   },
   {
     key: "news",

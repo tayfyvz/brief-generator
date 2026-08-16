@@ -228,6 +228,13 @@ export interface TrackDef {
   key: string;
   title: string;
   focus: string;
+  /**
+   * Deterministic queries run before the LLM-planned ones. LLM query
+   * planning varies run to run; a source type that reliably exists for
+   * every department (IRS 990s, "<town> fire chief" press) should not
+   * depend on the planner thinking of it this time.
+   */
+  seedQueries?: (anchor: Anchor) => string[];
 }
 
 const MAX_QUERIES_PER_TRACK = 3;
@@ -509,9 +516,16 @@ export function makeTrackNode(track: TrackDef) {
     );
 
     const seenQueries = new Set(state.searchedQueries);
-    const queries = plan.queries
-      .filter((q) => !seenQueries.has(q))
-      .slice(0, MAX_QUERIES_PER_TRACK);
+    const seeds = (track.seedQueries?.(anchor) ?? []).filter(
+      (q) => !seenQueries.has(q),
+    );
+    const planned = plan.queries.filter(
+      (q) => !seenQueries.has(q) && !seeds.includes(q),
+    );
+    const queries = [...seeds, ...planned].slice(
+      0,
+      MAX_QUERIES_PER_TRACK + seeds.length,
+    );
 
     const visited = new Set(state.visitedUrls.map(canonicalUrl));
     const storedFacts: StoredFact[] = [];
@@ -854,7 +868,8 @@ export async function verify(
           "so a dated fact from ANY source beats an undated directory datum, tier " +
           "notwithstanding. A dated fact that a person left a role beats an older " +
           "fact that they held it. Keep every note you write under 15 words, direct and plain. " +
-          "If a group of facts agrees, it is not a conflict. " +
+          "If a group of facts agrees, it is not a conflict. Two phone numbers, " +
+          "addresses, or contact channels can all be real at once: not a conflict. " +
           "Tier-4 facts come from community sources (wikis, social media): when a " +
           "tier 1-3 fact carries the same datum, the tier-4 fact is the duplicate to " +
           "drop; when a tier-4 fact stands alone it survives at low confidence. " +
