@@ -19,6 +19,7 @@ import {
   BriefSidebar,
   type SidebarNavItem,
 } from "@/components/brief/brief-sidebar";
+import { BriefChat } from "@/components/brief/brief-chat";
 import { BriefPending } from "@/components/brief/brief-pending";
 import { CopyBriefButton } from "@/components/brief/copy-brief-button";
 import { briefToMarkdown } from "@/lib/brief-text";
@@ -466,6 +467,9 @@ export default async function BriefPage({
           <BriefPending />
         )}
       </div>
+
+      {/* Floating Q&A over the brief; in-memory history, resets on refresh */}
+      {content && <BriefChat placeId={placeId} />}
     </main>
   );
 }
