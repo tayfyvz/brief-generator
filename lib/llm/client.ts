@@ -42,9 +42,12 @@ class AnthropicLlmClient implements LlmClient {
   }
 
   async structured<T>(req: StructuredRequest<T>): Promise<T> {
-    // Thinking is on by default on claude-opus-5 and max_tokens caps thinking
-    // plus response text, so leave generous headroom.
-    const response = await this.client.messages.parse({
+    // Streaming, because thinking is on by default on claude-opus-5 and long
+    // calls (verify over a big fact list) exceed the SDK's non-streaming
+    // duration limit. max_tokens caps thinking plus response text, so leave
+    // generous headroom. The structured-output format still guarantees
+    // schema-valid JSON; the Zod parse below is the final gate.
+    const stream = this.client.messages.stream({
       model: MODEL,
       max_tokens: req.maxTokens ?? 16000,
       system: req.system,
@@ -54,13 +57,21 @@ class AnthropicLlmClient implements LlmClient {
         ...(req.effort ? { effort: req.effort } : {}),
       },
     });
+    const response = await stream.finalMessage();
     if (response.stop_reason === "refusal") {
       throw new Error(`LLM refused task "${req.task}"`);
     }
-    if (response.parsed_output == null) {
-      throw new Error(`LLM returned unparseable output for task "${req.task}"`);
+    if (response.stop_reason === "max_tokens") {
+      throw new Error(`LLM output truncated at max_tokens for task "${req.task}"`);
     }
-    return response.parsed_output;
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    if (!text) {
+      throw new Error(`LLM returned no output for task "${req.task}"`);
+    }
+    return req.schema.parse(JSON.parse(text));
   }
 }
 
