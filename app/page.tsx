@@ -87,7 +87,7 @@ export default async function Home() {
             <Link
               key={s.placeId}
               href={`/brief/${s.placeId}`}
-              className="fade-up group inline-flex items-center gap-2 rounded-xl border bg-card px-3.5 py-2 text-sm shadow-sm transition hover:border-primary/40 hover:shadow-md"
+              className="card-link fade-up group inline-flex items-center gap-2 px-3.5 py-2 text-sm"
               style={{ animationDelay: `${i * 60}ms` }}
             >
               <MapPin className="size-3.5 text-primary" />
@@ -116,7 +116,7 @@ export default async function Home() {
                 style={{ animationDelay: `${i * 80}ms` }}
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <span className="icon-tile size-8">
                     <Icon className="size-4" />
                   </span>
                   <span className="text-xs font-semibold tabular-nums text-muted-foreground">
@@ -152,7 +152,7 @@ export default async function Home() {
               <li key={b.placeId}>
                 <Link
                   href={`/brief/${b.placeId}`}
-                  className="group flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition hover:border-primary/40 hover:shadow-md"
+                  className="card-link group flex items-center justify-between gap-3 px-4 py-3"
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{b.name}</span>

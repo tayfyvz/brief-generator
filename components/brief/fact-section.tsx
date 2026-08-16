@@ -67,7 +67,7 @@ export function FactSection({
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+          className="chip-hover mt-2.5 inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
           {expanded ? (
             <>

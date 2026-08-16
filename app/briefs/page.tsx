@@ -36,7 +36,7 @@ export default async function BriefsPage({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <span className="icon-tile size-9 rounded-xl">
               <LibraryBig className="size-5" />
             </span>
             All briefs
@@ -73,7 +73,7 @@ export default async function BriefsPage({
             >
               <Link
                 href={`/brief/${b.placeId}`}
-                className="group flex h-full flex-col rounded-xl border bg-card p-4 shadow-sm transition hover:border-primary/40 hover:shadow-md"
+                className="card-link group flex h-full flex-col p-4"
               >
                 <p className="font-medium leading-snug">{b.name}</p>
                 {(b.city || b.state) && (

@@ -89,6 +89,26 @@
   }
 }
 
+/* Shared component patterns (utilities at call sites still override). */
+@layer components {
+  /* Clickable card: lifts and picks up the brand border on hover. */
+  .card-link {
+    @apply rounded-xl border bg-card shadow-sm transition hover:border-primary/40 hover:shadow-md;
+  }
+  /* Small bordered control: brand-tinted hover. */
+  .chip-hover {
+    @apply transition hover:border-primary/40 hover:bg-primary/5;
+  }
+  /* Square icon holder on a brand-tinted background. */
+  .icon-tile {
+    @apply flex items-center justify-center rounded-lg bg-primary/10 text-primary;
+  }
+  /* Section landing offset below the sticky header + mobile chip nav. */
+  .section-anchor {
+    @apply scroll-mt-44 lg:scroll-mt-30;
+  }
+}
+
 /* Flash highlight when a search result reveals its fact card. */
 .fact-flash {
   animation: fact-flash 2s ease-out;

@@ -206,7 +206,7 @@ export default async function BriefPage({
               {department?.phone && (
                 <a
                   href={`tel:${department.phone}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/5"
+                  className="chip-hover inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium"
                 >
                   <Phone className="size-3.5 text-primary" /> {department.phone}
                 </a>
@@ -216,7 +216,7 @@ export default async function BriefPage({
                   href={department.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/5"
+                  className="chip-hover inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium"
                 >
                   <Globe className="size-3.5 text-primary" />
                   {new URL(department.website).hostname.replace(/^www\./, "")}
@@ -269,7 +269,7 @@ export default async function BriefPage({
 
             {/* Why call today */}
             {content.whyCallToday.length > 0 && (
-              <section id="why" className="mt-8 scroll-mt-44 lg:scroll-mt-30">
+              <section id="why" className="section-anchor mt-8">
                 <SectionHeading icon={Sparkles} title="Why call today" />
                 <ol className="grid gap-3 xl:grid-cols-3">
                   {content.whyCallToday.map((signal, i) => (
@@ -326,7 +326,7 @@ export default async function BriefPage({
             {/* Four sections; an empty section says so honestly */}
             {sectionData.map((section) => {
               return (
-                <section key={section.key} id={section.key} className="mt-9 scroll-mt-44 lg:scroll-mt-30">
+                <section key={section.key} id={section.key} className="section-anchor mt-9">
                   <SectionHeading
                     icon={section.icon}
                     title={section.title}
@@ -349,7 +349,7 @@ export default async function BriefPage({
 
             {/* Also found: background findings, collapsed by default */}
             {otherFacts.length > 0 && (
-              <section id="other" className="mt-9 scroll-mt-44 lg:scroll-mt-30">
+              <section id="other" className="section-anchor mt-9">
                 <SectionHeading
                   icon={Archive}
                   title="Also found"
@@ -369,7 +369,7 @@ export default async function BriefPage({
 
             {/* Honest research notes: caveats, caps, degraded tracks */}
             {hasNotes && (
-              <section id="notes" className="mt-9 scroll-mt-44 lg:scroll-mt-30 rounded-xl border border-dashed p-4">
+              <section id="notes" className="section-anchor mt-9 rounded-xl border border-dashed p-4">
                 <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                   <TriangleAlert className="size-4" /> Research notes
                 </h2>
@@ -411,7 +411,7 @@ function SectionHeading({
 }) {
   return (
     <h2 className="mb-3 flex items-center gap-2.5">
-      <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+      <span className="icon-tile size-7">
         <Icon className="size-4" />
       </span>
       <span className="text-sm font-semibold uppercase tracking-wide">{title}</span>
@@ -431,7 +431,7 @@ function EmptyState({ title, note }: { title: string; note: string }) {
       <p className="max-w-md text-sm text-muted-foreground">{note}</p>
       <Link
         href="/"
-        className="rounded-lg border bg-card px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/5"
+        className="chip-hover rounded-lg border bg-card px-4 py-2 text-sm font-medium"
       >
         Back to home
       </Link>

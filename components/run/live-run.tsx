@@ -147,7 +147,7 @@ export function LiveRun({ maxRounds }: { maxRounds: number }) {
               <TriangleAlert className="size-4" />
             </span>
           ) : (
-            <span className="relative flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <span className="icon-tile relative size-8">
               <Loader2 className="size-4 animate-spin" />
             </span>
           )}

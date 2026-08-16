@@ -21,11 +21,14 @@ const CONFIDENCE_STYLE: Record<string, { dot: string; label: string }> = {
   low: { dot: "bg-red-500", label: "low confidence" },
 };
 
+/** Amber caution style shared by the tier-4, stale, and conflict badges. */
+const WARN_BADGE = "border-amber-500/50 bg-amber-500/5 text-amber-700 dark:text-amber-400";
+
 const TIER_BADGE: Record<number, string> = {
   1: "border-emerald-500/50 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400",
   2: "border-sky-500/50 bg-sky-500/5 text-sky-700 dark:text-sky-400",
   3: "border-zinc-400/60 bg-zinc-400/5 text-zinc-600 dark:text-zinc-300",
-  4: "border-amber-500/50 bg-amber-500/5 text-amber-700 dark:text-amber-400",
+  4: WARN_BADGE,
 };
 
 const QUOTE_CLAMP_CHARS = 280;
@@ -76,7 +79,7 @@ export function CitationChip({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+          className="chip-hover inline-flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
           title="See the exact quote and source"
         >
           <Quote className="size-3" />
@@ -104,7 +107,7 @@ export function CitationChip({
             href={source.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 font-medium text-foreground transition hover:border-primary/40 hover:bg-primary/5"
+            className="chip-hover inline-flex items-center gap-1 rounded-md border px-2 py-1 font-medium text-foreground"
           >
             Open source <ExternalLink className="size-3" />
           </a>
@@ -153,26 +156,17 @@ export function FactCard({
           </span>
         )}
         {source?.tier != null && source.tier >= 4 && (
-          <Badge
-            variant="outline"
-            className="border-amber-500/50 bg-amber-500/5 text-amber-700 dark:text-amber-400"
-          >
+          <Badge variant="outline" className={WARN_BADGE}>
             community source, unconfirmed
           </Badge>
         )}
         {fact.stale && (
-          <Badge
-            variant="outline"
-            className="border-amber-500/50 bg-amber-500/5 text-amber-700 dark:text-amber-400"
-          >
+          <Badge variant="outline" className={WARN_BADGE}>
             may be stale
           </Badge>
         )}
         {fact.verification === "conflicted" && (
-          <Badge
-            variant="outline"
-            className="border-amber-500/50 bg-amber-500/5 text-amber-700 dark:text-amber-400"
-          >
+          <Badge variant="outline" className={WARN_BADGE}>
             conflicting sources
           </Badge>
         )}
