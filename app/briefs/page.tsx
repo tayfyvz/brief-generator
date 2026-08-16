@@ -9,6 +9,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { BriefsMap } from "@/components/briefs-map";
+import { LibraryFilter } from "@/components/library-filter";
 import { getBriefLibrary, getBriefPins } from "@/lib/db/queries";
 import { relativeDays } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -23,18 +24,29 @@ const PAGE_SIZE = 12;
 export default async function BriefsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; view?: string }>;
+  searchParams: Promise<{ page?: string; view?: string; q?: string }>;
 }) {
-  const { page: rawPage, view } = await searchParams;
+  const { page: rawPage, view, q: rawQ } = await searchParams;
   const requested = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
   const mapView = view === "map";
+  const q = rawQ?.trim() ?? "";
 
-  const { rows, total } = await getBriefLibrary(requested, PAGE_SIZE).catch(
+  const { rows, total } = await getBriefLibrary(requested, PAGE_SIZE, q).catch(
     () => ({ rows: [], total: 0 }),
   );
-  const pins = mapView ? await getBriefPins().catch(() => []) : [];
+  const pins = mapView ? await getBriefPins(q).catch(() => []) : [];
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(requested, pageCount);
+
+  /** /briefs href preserving the filter and, when asked, the map view. */
+  const viewHref = (map: boolean, pageNum?: number) => {
+    const params = new URLSearchParams();
+    if (map) params.set("view", "map");
+    if (q) params.set("q", q);
+    if (pageNum && pageNum > 1) params.set("page", String(pageNum));
+    const qs = params.toString();
+    return qs ? `/briefs?${qs}` : "/briefs";
+  };
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
@@ -47,18 +59,20 @@ export default async function BriefsPage({
             All briefs
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            {total === 0
-              ? "Briefs you generate will be collected here."
-              : `${total} researched department${total === 1 ? "" : "s"}, newest first.`}
+            {q
+              ? `${total} department${total === 1 ? "" : "s"} matching “${q}”.`
+              : total === 0
+                ? "Briefs you generate will be collected here."
+                : `${total} researched department${total === 1 ? "" : "s"}, newest first.`}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <nav aria-label="Library view" className="flex rounded-lg border bg-card p-0.5">
-            <ViewLink href="/briefs" active={!mapView}>
+            <ViewLink href={viewHref(false)} active={!mapView}>
               <List className="size-4" />
               List
             </ViewLink>
-            <ViewLink href="/briefs?view=map" active={mapView}>
+            <ViewLink href={viewHref(true)} active={mapView}>
               <MapIcon className="size-4" />
               Map
             </ViewLink>
@@ -72,12 +86,20 @@ export default async function BriefsPage({
         </div>
       </div>
 
+      <div className="mt-6 flex">
+        <LibraryFilter initialQuery={q} mapView={mapView} />
+      </div>
+
       {mapView ? (
         pins.length === 0 ? (
           <div className="mt-10 rounded-xl border border-dashed p-10 text-center">
-            <p className="font-medium">Nothing to map yet</p>
+            <p className="font-medium">
+              {q ? "No matching briefs to map" : "Nothing to map yet"}
+            </p>
             <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-              Briefs with a known location will show up here as pins.
+              {q
+                ? `No mapped brief matches “${q}”. Try a different name, city, or state.`
+                : "Briefs with a known location will show up here as pins."}
             </p>
           </div>
         ) : (
@@ -94,10 +116,11 @@ export default async function BriefsPage({
         )
       ) : rows.length === 0 ? (
         <div className="mt-10 rounded-xl border border-dashed p-10 text-center">
-          <p className="font-medium">No briefs yet</p>
+          <p className="font-medium">{q ? "No matching briefs" : "No briefs yet"}</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Paste a Google Place ID on the home page and the researched brief
-            will show up here.
+            {q
+              ? `Nothing matches “${q}”. Try a different name, city, or state.`
+              : "Paste a Google Place ID on the home page and the researched brief will show up here."}
           </p>
         </div>
       ) : (
@@ -135,7 +158,7 @@ export default async function BriefsPage({
           className="mt-8 flex items-center justify-center gap-1.5"
         >
           <PageLink
-            href={`/briefs?page=${page - 1}`}
+            href={viewHref(false, page - 1)}
             disabled={page <= 1}
             ariaLabel="Previous page"
           >
@@ -144,7 +167,7 @@ export default async function BriefsPage({
           {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
             <Link
               key={n}
-              href={`/briefs?page=${n}`}
+              href={viewHref(false, n)}
               aria-current={n === page ? "page" : undefined}
               className={cn(
                 "flex size-9 items-center justify-center rounded-lg text-sm font-medium tabular-nums transition",
@@ -157,7 +180,7 @@ export default async function BriefsPage({
             </Link>
           ))}
           <PageLink
-            href={`/briefs?page=${page + 1}`}
+            href={viewHref(false, page + 1)}
             disabled={page >= pageCount}
             ariaLabel="Next page"
           >

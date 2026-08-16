@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, notInArray, notLike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, notLike, or, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { briefs, departments, facts, researchRuns, runEvents, sources } from "./schema";
 import type { Anchor } from "@/lib/schemas/anchor";
@@ -43,10 +43,27 @@ export async function getRecentBriefs(limit = 8) {
     .limit(limit);
 }
 
+/** Library visibility plus an optional free-text filter on name/city/state. */
+function libraryWhere(q?: string) {
+  // Integration-test departments must never surface in the product UI.
+  const visible = notLike(briefs.placeId, "Test%");
+  const needle = q?.trim();
+  if (!needle) return visible;
+  const pattern = `%${needle}%`;
+  return and(
+    visible,
+    or(
+      ilike(departments.name, pattern),
+      ilike(departments.city, pattern),
+      ilike(departments.state, pattern),
+    ),
+  );
+}
+
 /** Paginated brief library for the /briefs page. */
-export async function getBriefLibrary(page = 1, pageSize = 12) {
+export async function getBriefLibrary(page = 1, pageSize = 12, q?: string) {
   const db = getDb();
-  const where = notLike(briefs.placeId, "Test%");
+  const where = libraryWhere(q);
   const rows = await db
     .select({
       placeId: briefs.placeId,
@@ -70,7 +87,7 @@ export async function getBriefLibrary(page = 1, pageSize = 12) {
 }
 
 /** All briefs with coordinates, for the /briefs map view (never paginated). */
-export async function getBriefPins() {
+export async function getBriefPins(q?: string) {
   const db = getDb();
   return db
     .select({
@@ -85,7 +102,7 @@ export async function getBriefPins() {
     .innerJoin(departments, eq(briefs.placeId, departments.placeId))
     .where(
       and(
-        notLike(briefs.placeId, "Test%"),
+        libraryWhere(q),
         isNotNull(departments.lat),
         isNotNull(departments.lng),
       ),
