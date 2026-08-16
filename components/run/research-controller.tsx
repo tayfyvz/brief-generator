@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { Clock, Play, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LiveRun } from "./live-run";
 import { useRunStore } from "@/lib/stores/run-store";
@@ -105,39 +105,53 @@ export function ResearchController({
   // while the live-run panel breaks onto its own full-width line.
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        {researchedAt && <span>Researched {relativeDays(researchedAt)}</span>}
-        {status === "done" && runId && <span>· just updated</span>}
-        {!live && interruptedRunId && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1.5 text-xs"
-            onClick={() => void start({ resumeRunId: interruptedRunId })}
-          >
-            <RefreshCw className="size-3" /> Resume interrupted run
-          </Button>
-        )}
-        {!live && (hasBrief || status === "done" || status === "failed") && (
+      <div className="flex flex-wrap items-center gap-2">
+        {live ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            <span className="live-dot size-1.5 rounded-full bg-primary" />
+            Researching live
+          </span>
+        ) : (
           <>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1.5 text-xs"
-              title="Rerun research, keeping every verified fact from the last run and spending the budget on gaps."
-              onClick={() => void start({ placeId })}
-            >
-              <RefreshCw className="size-3" /> Update
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 gap-1.5 text-xs text-muted-foreground"
-              title="Rerun from scratch without carrying forward previous facts (prior runs stay in the database)."
-              onClick={() => void start({ placeId, fresh: true })}
-            >
-              Start fresh
-            </Button>
+            {researchedAt && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">
+                <Clock className="size-3" />
+                Updated {relativeDays(researchedAt)}
+                {status === "done" && runId && " · just now"}
+              </span>
+            )}
+            {interruptedRunId && (
+              <Button
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                title="Continue the interrupted run where it left off."
+                onClick={() => void start({ resumeRunId: interruptedRunId })}
+              >
+                <Play className="size-3" /> Resume research
+              </Button>
+            )}
+            {(hasBrief || status === "done" || status === "failed") && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5 text-xs"
+                  title="Rerun research, keeping every verified fact from the last run and spending the budget on gaps."
+                  onClick={() => void start({ placeId })}
+                >
+                  <RefreshCw className="size-3" /> Update brief
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 gap-1.5 text-xs text-muted-foreground"
+                  title="Rerun from scratch without carrying forward previous facts (prior runs stay in the database)."
+                  onClick={() => void start({ placeId, fresh: true })}
+                >
+                  <RotateCcw className="size-3" /> Start fresh
+                </Button>
+              </>
+            )}
           </>
         )}
       </div>

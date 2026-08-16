@@ -4,48 +4,49 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* Warm neutrals with a fire-red brand accent. */
+  --background: oklch(0.985 0.004 85);
+  --foreground: oklch(0.2 0.012 50);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2 0.012 50);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.2 0.012 50);
+  --primary: oklch(0.55 0.19 29);
+  --primary-foreground: oklch(0.985 0.005 80);
+  --secondary: oklch(0.955 0.008 75);
+  --secondary-foreground: oklch(0.3 0.02 45);
+  --muted: oklch(0.955 0.006 80);
+  --muted-foreground: oklch(0.5 0.015 55);
+  --accent: oklch(0.945 0.014 65);
+  --accent-foreground: oklch(0.25 0.02 45);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.912 0.008 75);
+  --input: oklch(0.912 0.008 75);
+  --ring: oklch(0.6 0.15 30);
   --radius: 0.625rem;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.155 0.008 50);
+  --foreground: oklch(0.975 0.004 80);
+  --card: oklch(0.205 0.01 50);
+  --card-foreground: oklch(0.975 0.004 80);
+  --popover: oklch(0.205 0.01 50);
+  --popover-foreground: oklch(0.975 0.004 80);
+  --primary: oklch(0.64 0.18 29);
+  --primary-foreground: oklch(0.985 0.005 80);
+  --secondary: oklch(0.27 0.012 50);
+  --secondary-foreground: oklch(0.975 0.004 80);
+  --muted: oklch(0.27 0.012 50);
+  --muted-foreground: oklch(0.71 0.012 60);
+  --accent: oklch(0.28 0.016 50);
+  --accent-foreground: oklch(0.975 0.004 80);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.6 0.14 30);
 }
 
 @theme inline {
@@ -83,6 +84,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 /* Flash highlight when a search result reveals its fact card. */
@@ -97,5 +101,76 @@
   }
   100% {
     box-shadow: none;
+  }
+}
+
+/* Entrance animation for cards and sections. */
+.fade-up {
+  animation: fade-up 0.45s ease-out both;
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading shimmer for skeletons and in-flight progress. */
+.shimmer {
+  background: linear-gradient(
+    100deg,
+    var(--color-muted) 40%,
+    color-mix(in oklab, var(--color-muted) 60%, var(--color-background)) 50%,
+    var(--color-muted) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Pulsing "live" indicator dot. */
+.live-dot {
+  position: relative;
+}
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes live-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  80%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .fade-up,
+  .fact-flash,
+  .shimmer,
+  .live-dot::after {
+    animation: none;
   }
 }

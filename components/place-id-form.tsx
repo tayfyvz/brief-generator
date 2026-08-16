@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { ArrowRight, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { placeIdSchema } from "@/lib/schemas/anchor";
 
@@ -13,9 +13,9 @@ export function PlaceIdForm() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = placeIdSchema.safeParse(value);
+    const parsed = placeIdSchema.safeParse(value.trim());
     if (!parsed.success) {
-      setError("That doesn't look like a Google Place ID.");
+      setError("That doesn't look like a Google Place ID. It usually starts with “ChIJ”.");
       return;
     }
     setError(null);
@@ -24,20 +24,28 @@ export function PlaceIdForm() {
 
   return (
     <form onSubmit={submit} className="w-full max-w-xl">
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2 rounded-xl border bg-card p-1.5 shadow-sm transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-ring/40">
+        <MapPin className="ml-2.5 size-4 shrink-0 text-muted-foreground" />
         <input
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (error) setError(null);
+          }}
           placeholder="Paste a Google Place ID, e.g. ChIJpcN7ecgAyIkRrOcWzZx3Yyc"
-          className="h-11 flex-1 rounded-md border bg-background px-4 font-mono text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-ring"
+          className="h-10 min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:font-sans"
           aria-label="Google Place ID"
+          aria-invalid={Boolean(error)}
         />
-        <Button type="submit" size="lg" className="h-11">
-          <Search className="size-4" />
-          Get brief
+        <Button type="submit" className="h-10 shrink-0 gap-1.5 px-4">
+          Get brief <ArrowRight className="size-4" />
         </Button>
       </div>
-      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="fade-up mt-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </form>
   );
 }

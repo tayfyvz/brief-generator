@@ -43,6 +43,32 @@ export async function getRecentBriefs(limit = 8) {
     .limit(limit);
 }
 
+/** Paginated brief library for the /briefs page. */
+export async function getBriefLibrary(page = 1, pageSize = 12) {
+  const db = getDb();
+  const where = notLike(briefs.placeId, "Test%");
+  const rows = await db
+    .select({
+      placeId: briefs.placeId,
+      createdAt: briefs.createdAt,
+      name: departments.name,
+      city: departments.city,
+      state: departments.state,
+    })
+    .from(briefs)
+    .innerJoin(departments, eq(briefs.placeId, departments.placeId))
+    .where(where)
+    .orderBy(desc(briefs.createdAt))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(briefs)
+    .innerJoin(departments, eq(briefs.placeId, departments.placeId))
+    .where(where);
+  return { rows, total };
+}
+
 export async function getDepartment(placeId: string) {
   const db = getDb();
   const rows = await db

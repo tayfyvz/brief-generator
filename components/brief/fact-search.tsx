@@ -91,7 +91,7 @@ export function FactSearch({ placeId }: { placeId: string }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='Search the findings, e.g. "pumper" or "grant" (press / to focus)'
-          className="h-10 w-full rounded-md border bg-background pl-9 pr-9 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-ring"
+          className="h-10 w-full rounded-lg border bg-card pl-9 pr-9 text-sm shadow-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-ring/40"
           aria-label="Search facts"
         />
         {query && (
@@ -106,7 +106,7 @@ export function FactSearch({ placeId }: { placeId: string }) {
         )}
       </div>
       {results && (
-        <div className="mt-2 rounded-md border bg-card">
+        <div className="fade-up mt-2 overflow-hidden rounded-xl border bg-card shadow-md">
           {results.length === 0 ? (
             <p className="px-4 py-3 text-sm text-muted-foreground">
               No findings match “{query}”.

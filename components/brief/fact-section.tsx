@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { FactCard, type FactRow, type SourceRow } from "./fact-card";
 import { scrollToFact, useBriefUiStore } from "@/lib/stores/brief-ui-store";
+import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 6;
 
 /**
- * One brief section: curated facts by default, "Show all N findings"
- * expander for the rest. Listens to the brief UI store so a
- * clicked search result can expand the section and scroll to its fact.
+ * One brief section: curated facts by default; "View all" expands into a
+ * paginated list so long sections stay scannable. Listens to the brief UI
+ * store so a clicked search result can expand the section, flip to the
+ * right page, and scroll to its fact.
  */
 export function FactSection({
   curated,
@@ -23,69 +27,133 @@ export function FactSection({
   collapsedByDefault?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(0);
   const revealFactId = useBriefUiStore((s) => s.revealFactId);
   const revealNonce = useBriefUiStore((s) => s.revealNonce);
 
+  const all = useMemo(() => [...curated, ...rest], [curated, rest]);
   // Without a curated pick, preview only the top few facts; a wall of
   // bullets is exactly what the brief exists to avoid.
   const preview = useMemo(
-    () => (curated.length > 0 ? curated : rest.slice(0, 4)),
-    [curated, rest],
+    () => (collapsedByDefault ? [] : curated.length > 0 ? curated : rest.slice(0, 4)),
+    [curated, rest, collapsedByDefault],
   );
-  const hiddenIds = useMemo(() => {
-    const previewIds = new Set(preview.map((f) => f.id));
-    const hidden = new Set(
-      [...curated, ...rest]
-        .filter((f) => collapsedByDefault || !previewIds.has(f.id))
-        .map((f) => f.id),
-    );
-    return hidden;
-  }, [curated, rest, preview, collapsedByDefault]);
-  const ownIds = useMemo(
-    () => new Set([...curated, ...rest].map((f) => f.id)),
-    [curated, rest],
-  );
+  const ownIds = useMemo(() => new Set(all.map((f) => f.id)), [all]);
+  const previewIds = useMemo(() => new Set(preview.map((f) => f.id)), [preview]);
 
-  // A search result asked for one of our facts: expand if needed, then scroll.
+  const pageCount = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
+  const clampedPage = Math.min(page, pageCount - 1);
+
+  // A search result asked for one of our facts: expand if needed, flip to
+  // the page that holds it, then scroll.
   useEffect(() => {
     if (!revealFactId || !ownIds.has(revealFactId)) return;
-    if (hiddenIds.has(revealFactId) && !expanded) setExpanded(true);
-    const t = window.setTimeout(() => scrollToFact(revealFactId), 60);
+    const hidden = !previewIds.has(revealFactId);
+    if (hidden) {
+      setExpanded(true);
+      const idx = all.findIndex((f) => f.id === revealFactId);
+      if (idx >= 0) setPage(Math.floor(idx / PAGE_SIZE));
+    }
+    const t = window.setTimeout(() => scrollToFact(revealFactId), 80);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealFactId, revealNonce]);
 
-  const total = curated.length + rest.length;
-  const collapsed = collapsedByDefault && !expanded;
-  const shown = collapsed ? [] : expanded ? [...curated, ...rest] : preview;
-  const expandable = collapsedByDefault || total > preview.length;
+  const shown = expanded
+    ? all.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
+    : preview;
+  const expandable = all.length > preview.length;
 
   return (
     <div>
       {shown.length > 0 && (
         <div className="grid gap-2.5">
-          {shown.map((fact) => (
-            <FactCard key={fact.id} fact={fact} source={sources[fact.sourceId]} />
+          {shown.map((fact, i) => (
+            <div
+              key={fact.id}
+              className="fade-up"
+              style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}
+            >
+              <FactCard fact={fact} source={sources[fact.sourceId]} />
+            </div>
           ))}
         </div>
       )}
-      {expandable && (
-        <button
-          type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp className="size-3.5" />
-              {collapsedByDefault ? "Hide" : "Show fewer"}
-            </>
+
+      {(expandable || expanded) && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          {!expanded ? (
+            <button
+              type="button"
+              onClick={() => {
+                setExpanded(true);
+                setPage(0);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+            >
+              <ChevronDown className="size-3.5" />
+              {collapsedByDefault
+                ? `Show ${all.length} background finding${all.length === 1 ? "" : "s"}`
+                : `View all ${all.length} findings`}
+            </button>
           ) : (
             <>
-              <ChevronDown className="size-3.5" /> Show all {total} findings
+              <button
+                type="button"
+                onClick={() => {
+                  setExpanded(false);
+                  setPage(0);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                <ChevronUp className="size-3.5" />
+                {collapsedByDefault ? "Hide" : "Show fewer"}
+              </button>
+              {pageCount > 1 && (
+                <nav
+                  aria-label="Findings pages"
+                  className="ml-auto flex items-center gap-1"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={clampedPage === 0}
+                    aria-label="Previous page"
+                    className="rounded-lg border bg-card p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    <ChevronLeft className="size-3.5" />
+                  </button>
+                  {Array.from({ length: pageCount }, (_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setPage(i)}
+                      aria-label={`Page ${i + 1}`}
+                      aria-current={i === clampedPage ? "page" : undefined}
+                      className={cn(
+                        "size-7 rounded-lg text-xs font-medium tabular-nums transition",
+                        i === clampedPage
+                          ? "bg-primary text-primary-foreground"
+                          : "border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
+                      )}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                    disabled={clampedPage === pageCount - 1}
+                    aria-label="Next page"
+                    className="rounded-lg border bg-card p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    <ChevronRight className="size-3.5" />
+                  </button>
+                </nav>
+              )}
             </>
           )}
-        </button>
+        </div>
       )}
     </div>
   );

@@ -132,8 +132,9 @@ export function ActiveRuns() {
   if (list.length === 0) return null;
 
   return (
-    <section className="w-full max-w-xl">
-      <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+    <section className="fade-up w-full max-w-3xl">
+      <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="live-dot size-1.5 rounded-full bg-primary" />
         Researching now
       </h2>
       <ul className="space-y-2">
@@ -142,7 +143,7 @@ export function ActiveRuns() {
             <Link
               href={`/brief/${run.placeId}`}
               className={cn(
-                "group block rounded-lg border bg-card px-4 py-3 shadow-sm transition hover:bg-accent",
+                "group block overflow-hidden rounded-xl border bg-card px-4 py-3 shadow-sm transition hover:shadow-md",
                 run.status === "running" && "border-primary/40",
               )}
             >
@@ -166,7 +167,7 @@ export function ActiveRuns() {
                   <ArrowRight className="size-3 opacity-0 transition group-hover:opacity-100" />
                 </span>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 truncate text-xs text-muted-foreground">
                 {run.step}
                 {run.status === "running" && run.lastClaim && (
                   <span className="ml-2 text-muted-foreground/70">
@@ -174,6 +175,9 @@ export function ActiveRuns() {
                   </span>
                 )}
               </p>
+              {run.status === "running" && (
+                <div className="shimmer mt-2.5 h-1 rounded-full" aria-hidden />
+              )}
             </Link>
           </li>
         ))}
