@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CornerDownRight, MessageCircle, Send, X } from "lucide-react";
+import { CornerDownRight, Flame, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBriefUiStore } from "@/lib/stores/brief-ui-store";
 import type { ChatMessage, ChatResponse } from "@/lib/schemas/chat";
@@ -26,6 +26,8 @@ const SUGGESTIONS = [
 
 export function BriefChat({ placeId }: { placeId: string }) {
   const [open, setOpen] = useState(false);
+  /** True while the pop-out animation plays; the panel unmounts when it ends. */
+  const [closing, setClosing] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [pending, setPending] = useState(false);
@@ -93,6 +95,16 @@ export function BriefChat({ placeId }: { placeId: string }) {
     }
   }
 
+  function close() {
+    // A reduced-motion pop-out animation never fires animationend, so close
+    // instantly there instead of waiting on an event that won't come.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setOpen(false);
+    } else {
+      setClosing(true);
+    }
+  }
+
   if (!open) {
     return (
       <button
@@ -101,19 +113,28 @@ export function BriefChat({ placeId }: { placeId: string }) {
         className="chip-hover fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full border bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg"
         aria-label="Ask about this brief"
       >
-        <MessageCircle className="size-4" /> Ask about this brief
+        <Flame className="size-4" /> Ask about this brief
       </button>
     );
   }
 
   return (
     <div
-      className="fade-up fixed bottom-4 right-4 z-40 flex h-[min(28rem,70vh)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border bg-card shadow-xl"
+      className={cn(
+        "fixed bottom-4 right-4 z-40 flex h-[min(28rem,70vh)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border bg-card shadow-xl",
+        closing ? "chat-pop-out" : "chat-pop-in",
+      )}
+      onAnimationEnd={(e) => {
+        if (closing && e.target === e.currentTarget) {
+          setOpen(false);
+          setClosing(false);
+        }
+      }}
       role="dialog"
       aria-label="Brief chat"
     >
       <div className="flex items-center gap-2 border-b px-3 py-2.5">
-        <MessageCircle className="size-4 text-primary" />
+        <Flame className="size-4 text-primary" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight">Ask about this brief</p>
           <p className="text-xs text-muted-foreground">
@@ -122,7 +143,7 @@ export function BriefChat({ placeId }: { placeId: string }) {
         </div>
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={close}
           className="rounded p-1 text-muted-foreground hover:text-foreground"
           aria-label="Close chat"
         >
@@ -184,8 +205,9 @@ export function BriefChat({ placeId }: { placeId: string }) {
           </div>
         ))}
         {pending && (
-          <div className="max-w-[85%] rounded-xl bg-accent px-3 py-2 text-sm text-muted-foreground">
-            <span className="animate-pulse">Checking the brief…</span>
+          <div className="flex max-w-[85%] items-center gap-2 rounded-xl bg-accent px-3 py-2 text-sm text-muted-foreground">
+            <Flame className="flame-flicker size-4 shrink-0 text-primary" />
+            Checking the brief…
           </div>
         )}
       </div>

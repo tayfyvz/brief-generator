@@ -186,6 +186,63 @@
   }
 }
 
+/* Brief chat: flame flicker while an answer is pending. */
+.flame-flicker {
+  transform-origin: 50% 85%;
+  animation: flame-flicker 0.9s ease-in-out infinite;
+}
+@keyframes flame-flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1.12) rotate(-3deg);
+    opacity: 0.85;
+  }
+  60% {
+    transform: scale(0.94) rotate(2.5deg);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(1.06) rotate(-1.5deg);
+    opacity: 0.9;
+  }
+}
+
+/* Brief chat panel: pops from its corner on open, shrinks back on close.
+   The component falls back to instant close under reduced motion, since a
+   disabled pop-out animation would never fire animationend. */
+.chat-pop-in {
+  transform-origin: bottom right;
+  animation: chat-pop-in 0.18s ease-out both;
+}
+.chat-pop-out {
+  transform-origin: bottom right;
+  animation: chat-pop-out 0.15s ease-in both;
+}
+@keyframes chat-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes chat-pop-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+}
+
 /* Leaflet map view: theme the OSM tiles and popups to match the app. */
 .dark .map-tiles {
   filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
@@ -242,7 +299,10 @@
   .fade-up,
   .fact-flash,
   .shimmer,
-  .live-dot::after {
+  .live-dot::after,
+  .flame-flicker,
+  .chat-pop-in,
+  .chat-pop-out {
     animation: none;
   }
 }
