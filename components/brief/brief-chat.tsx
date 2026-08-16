@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CornerDownRight, Flame, Send, X } from "lucide-react";
+import { CornerDownRight, Send, Siren, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBriefUiStore } from "@/lib/stores/brief-ui-store";
 import type { ChatMessage, ChatResponse } from "@/lib/schemas/chat";
@@ -16,6 +16,26 @@ interface DisplayMessage extends ChatMessage {
   citations?: { id: string; claim: string }[];
   /** Failed turns render as errors and are excluded from the transcript sent. */
   error?: boolean;
+}
+
+/** Lucide has no fire-helmet glyph, so this one is drawn in its 24×24 stroke style. */
+function FireHelmet({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M5.5 15a6.5 6.5 0 0 1 13 0" />
+      <path d="M2.5 17c2.5-1.3 5.7-2 9.5-2s7 .7 9.5 2" />
+      <path d="M10.5 13v-3.5a1.5 1.5 0 0 1 3 0V13" />
+    </svg>
+  );
 }
 
 const SUGGESTIONS = [
@@ -113,7 +133,7 @@ export function BriefChat({ placeId }: { placeId: string }) {
         className="chip-hover fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full border bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg"
         aria-label="Ask about this brief"
       >
-        <Flame className="size-4" /> Ask about this brief
+        <FireHelmet className="size-4" /> Ask about this brief
       </button>
     );
   }
@@ -134,7 +154,7 @@ export function BriefChat({ placeId }: { placeId: string }) {
       aria-label="Brief chat"
     >
       <div className="flex items-center gap-2 border-b px-3 py-2.5">
-        <Flame className="size-4 text-primary" />
+        <FireHelmet className="size-4 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight">Ask about this brief</p>
           <p className="text-xs text-muted-foreground">
@@ -206,7 +226,7 @@ export function BriefChat({ placeId }: { placeId: string }) {
         ))}
         {pending && (
           <div className="flex max-w-[85%] items-center gap-2 rounded-xl bg-accent px-3 py-2 text-sm text-muted-foreground">
-            <Flame className="flame-flicker size-4 shrink-0 text-primary" />
+            <Siren className="siren-pulse size-4 shrink-0 text-primary" />
             Checking the brief…
           </div>
         )}

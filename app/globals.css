@@ -186,28 +186,19 @@
   }
 }
 
-/* Brief chat: flame flicker while an answer is pending. */
-.flame-flicker {
-  transform-origin: 50% 85%;
-  animation: flame-flicker 0.9s ease-in-out infinite;
+/* Brief chat: siren light softly pulsing while an answer is pending. */
+.siren-pulse {
+  animation: siren-pulse 1.2s ease-in-out infinite;
 }
-@keyframes flame-flicker {
+@keyframes siren-pulse {
   0%,
   100% {
-    transform: scale(1) rotate(0deg);
+    opacity: 0.7;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
     opacity: 1;
-  }
-  30% {
-    transform: scale(1.12) rotate(-3deg);
-    opacity: 0.85;
-  }
-  60% {
-    transform: scale(0.94) rotate(2.5deg);
-    opacity: 1;
-  }
-  80% {
-    transform: scale(1.06) rotate(-1.5deg);
-    opacity: 0.9;
+    filter: drop-shadow(0 0 5px var(--color-primary));
   }
 }
 
@@ -300,7 +291,7 @@
   .fact-flash,
   .shimmer,
   .live-dot::after,
-  .flame-flicker,
+  .siren-pulse,
   .chat-pop-in,
   .chat-pop-out {
     animation: none;
