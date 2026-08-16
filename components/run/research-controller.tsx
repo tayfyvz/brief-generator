@@ -101,9 +101,11 @@ export function ResearchController({
 
   const live = status === "starting" || status === "running";
 
+  // Fragment: the actions row slots into the page header (right-aligned),
+  // while the live-run panel breaks onto its own full-width line.
   return (
-    <div>
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+    <>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         {researchedAt && <span>Researched {relativeDays(researchedAt)}</span>}
         {status === "done" && runId && <span>· just updated</span>}
         {!live && interruptedRunId && (
@@ -127,7 +129,11 @@ export function ResearchController({
           </Button>
         )}
       </div>
-      {(live || status === "failed") && <LiveRun maxRounds={maxRounds} />}
-    </div>
+      {(live || status === "failed") && (
+        <div className="w-full">
+          <LiveRun maxRounds={maxRounds} />
+        </div>
+      )}
+    </>
   );
 }

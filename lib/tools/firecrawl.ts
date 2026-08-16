@@ -4,7 +4,7 @@ import { fetchedPageSchema, type FetchedPage } from "@/lib/schemas/tools";
 import { FIXTURE_PAGES } from "./fixtures";
 
 /**
- * Page/PDF → markdown extraction (PLAN §1). Firecrawl when a key exists,
+ * Page/PDF → markdown extraction. Firecrawl when a key exists,
  * with a direct-fetch fallback (pdf-parse for PDFs, crude HTML strip)
  * because municipal sites are exactly where scrapers fail.
  * Returns null when the page can't be fetched at all.

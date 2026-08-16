@@ -9,7 +9,7 @@ export function contentHash(markdown: string): string {
 }
 
 /**
- * Persist a fetched page as a source snapshot (PLAN §5: provenance for
+ * Persist a fetched page as a source snapshot (provenance for
  * citation popovers). Deduped per run by URL: re-fetching the same page in
  * a run returns the existing source id instead of inserting a duplicate.
  */

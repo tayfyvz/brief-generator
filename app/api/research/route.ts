@@ -17,7 +17,7 @@ function clientIp(req: Request): string {
 }
 
 /**
- * Start a research run (PLAN §2). Returns immediately with {runId}; a second
+ * Start a research run. Returns immediately with {runId}; a second
  * request for a Place ID with an active run joins it (single-flight, not
  * counted against guards). Pass {resumeRunId} to resume an interrupted run.
  */

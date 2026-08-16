@@ -20,7 +20,7 @@ function track(key: string): TrackDef {
 }
 
 /**
- * Research graph (PLAN §3): anchor → entity → 6-track fan-out → expansion
+ * Research graph: anchor → entity → 6-track fan-out → expansion
  * loop ⟲ → verify → synthesize. Tracks run in one parallel superstep and
  * join on planExpansion, which loops until two dry rounds, the round cap,
  * or the run budget; the fresh-context verifier then gates what synthesize

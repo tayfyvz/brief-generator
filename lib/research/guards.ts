@@ -4,7 +4,7 @@ import { researchRuns } from "@/lib/db/schema";
 import { getEnv } from "@/lib/env";
 
 /**
- * Global abuse guards for the public demo endpoint (PLAN §2): per-IP rate
+ * Global abuse guards for the public demo endpoint: per-IP rate
  * limit (in-memory), max concurrent runs, daily run limit. Cached-brief
  * reads are never guarded; they're cheap.
  */

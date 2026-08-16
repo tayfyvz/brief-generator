@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Pool } from "pg";
 
 /**
- * The one graph integration test (PLAN §8): run the whole research graph
+ * The one graph integration test: run the whole research graph
  * with stubbed tool clients against a real Postgres and assert the hard
  * rules hold; a brief exists, and every stored fact is cited with a
  * verbatim quote. Skips when no database is reachable (unit-only runs).

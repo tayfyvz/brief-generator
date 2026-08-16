@@ -6,7 +6,7 @@ import { createRunRow, executeGraph } from "@/lib/graph/run";
 import type { PersistedRunEvent, RunEvent } from "@/lib/schemas/events";
 
 /**
- * RunManager singleton (PLAN §2): starts research runs in-process, enforces
+ * RunManager singleton: starts research runs in-process, enforces
  * single-flight per Place ID, assigns event sequence numbers, persists every
  * event to run_events (SSE replay log), and fans events out to live
  * subscribers. No queue, no Redis; one long-running server.

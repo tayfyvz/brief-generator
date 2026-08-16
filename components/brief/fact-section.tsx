@@ -7,7 +7,7 @@ import { scrollToFact, useBriefUiStore } from "@/lib/stores/brief-ui-store";
 
 /**
  * One brief section: curated facts by default, "Show all N findings"
- * expander for the rest (PLAN §6). Listens to the brief UI store so a
+ * expander for the rest. Listens to the brief UI store so a
  * clicked search result can expand the section and scroll to its fact.
  */
 export function FactSection({
@@ -26,11 +26,21 @@ export function FactSection({
   const revealFactId = useBriefUiStore((s) => s.revealFactId);
   const revealNonce = useBriefUiStore((s) => s.revealNonce);
 
+  // Without a curated pick, preview only the top few facts; a wall of
+  // bullets is exactly what the brief exists to avoid.
+  const preview = useMemo(
+    () => (curated.length > 0 ? curated : rest.slice(0, 4)),
+    [curated, rest],
+  );
   const hiddenIds = useMemo(() => {
-    const hidden = new Set(rest.map((f) => f.id));
-    if (collapsedByDefault) for (const f of curated) hidden.add(f.id);
+    const previewIds = new Set(preview.map((f) => f.id));
+    const hidden = new Set(
+      [...curated, ...rest]
+        .filter((f) => collapsedByDefault || !previewIds.has(f.id))
+        .map((f) => f.id),
+    );
     return hidden;
-  }, [curated, rest, collapsedByDefault]);
+  }, [curated, rest, preview, collapsedByDefault]);
   const ownIds = useMemo(
     () => new Set([...curated, ...rest].map((f) => f.id)),
     [curated, rest],
@@ -47,14 +57,8 @@ export function FactSection({
 
   const total = curated.length + rest.length;
   const collapsed = collapsedByDefault && !expanded;
-  const shown = collapsed
-    ? []
-    : expanded
-      ? [...curated, ...rest]
-      : curated.length > 0
-        ? curated
-        : rest;
-  const expandable = collapsedByDefault || (rest.length > 0 && curated.length > 0);
+  const shown = collapsed ? [] : expanded ? [...curated, ...rest] : preview;
+  const expandable = collapsedByDefault || total > preview.length;
 
   return (
     <div>
@@ -74,7 +78,7 @@ export function FactSection({
           {expanded ? (
             <>
               <ChevronUp className="size-3.5" />
-              {collapsedByDefault ? "Hide" : "Show curated only"}
+              {collapsedByDefault ? "Hide" : "Show fewer"}
             </>
           ) : (
             <>

@@ -1,6 +1,6 @@
 import type { TrackDef } from "./nodes";
 
-/** The six parallel research tracks (PLAN §3 N2). */
+/** The six parallel research tracks. */
 export const TRACKS: TrackDef[] = [
   {
     key: "leadership",

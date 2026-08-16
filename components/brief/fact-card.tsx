@@ -118,6 +118,14 @@ export function FactCard({
             {fact.confidence}
           </span>
         )}
+        {source?.tier != null && source.tier >= 4 && (
+          <Badge
+            variant="outline"
+            className="border-amber-500/50 text-amber-600 dark:text-amber-400"
+          >
+            community source, unconfirmed
+          </Badge>
+        )}
         {fact.stale && (
           <Badge
             variant="outline"

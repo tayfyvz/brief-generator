@@ -88,7 +88,7 @@ export async function getBriefPageData(placeId: string) {
   const brief = briefRows[0] ?? null;
   if (!brief) return { department, brief: null, facts: [], sources: [] };
 
-  // Rejected facts are never shown (PLAN hard rule); duplicates are hidden
+  // Rejected facts are never shown; duplicates are hidden
   // because their kept fact renders instead. Everything else is shown with
   // its verification state rendered honestly. Usefulness sorts high first
   // (nulls with medium), then source tier, then recency.

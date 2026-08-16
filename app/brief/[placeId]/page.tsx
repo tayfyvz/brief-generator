@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   Banknote,
-  FileSearch,
   Globe,
   Newspaper,
   Phone,
@@ -12,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { BriefSidebar, type SidebarNavItem } from "@/components/brief/brief-sidebar";
 import { FactSection } from "@/components/brief/fact-section";
 import { FactSearch } from "@/components/brief/fact-search";
 import { ResearchController } from "@/components/run/research-controller";
@@ -30,21 +30,43 @@ import type { Warning } from "@/lib/schemas/tools";
 
 export const dynamic = "force-dynamic";
 
+const MAX_CURATED_PER_SECTION = 5;
+
 const SECTIONS: {
   key: "leadership" | "fleet" | "money" | "news";
   title: string;
   categories: string[];
   icon: typeof Users;
+  emptyNote: string;
 }[] = [
-  { key: "leadership", title: "Who to call", categories: ["leadership"], icon: Users },
-  { key: "fleet", title: "What they drive", categories: ["fleet"], icon: Truck },
+  {
+    key: "leadership",
+    title: "Who to call",
+    categories: ["leadership"],
+    icon: Users,
+    emptyNote: "No verified leadership or contact information found in this run.",
+  },
+  {
+    key: "fleet",
+    title: "What they drive",
+    categories: ["fleet"],
+    icon: Truck,
+    emptyNote: "No verified apparatus information found in this run.",
+  },
   {
     key: "money",
     title: "Money moving",
     categories: ["procurement", "funding"],
     icon: Banknote,
+    emptyNote: "No verified budget, grant, or procurement activity found in this run.",
   },
-  { key: "news", title: "Recent signals", categories: ["news"], icon: Newspaper },
+  {
+    key: "news",
+    title: "Recent signals",
+    categories: ["news"],
+    icon: Newspaper,
+    emptyNote: "No verified recent news found in this run.",
+  },
 ];
 
 export default async function BriefPage({
@@ -84,22 +106,38 @@ export default async function BriefPage({
   );
   const factById = new Map<string, FactRow>(facts.map((f) => [f.id, f]));
 
-  const sectionCount = (categories: string[]) =>
-    facts.filter((f) => categories.includes(f.category)).length;
-  const otherCount = sectionCount(["other"]);
+  // Render-time curation invariants (also enforced at synthesis; applying
+  // them here fixes briefs generated before the rule existed): a section
+  // only shows facts of its own categories, each fact renders in at most
+  // one section, and curated picks stay short.
+  const usedIds = new Set<string>();
+  const sectionData = SECTIONS.map((section) => {
+    const curated = (content?.curatedFactIds[section.key] ?? [])
+      .map((id) => factById.get(id))
+      .filter((f): f is FactRow => Boolean(f))
+      .filter((f) => section.categories.includes(f.category))
+      .filter((f) => !usedIds.has(f.id) && (usedIds.add(f.id), true))
+      .slice(0, MAX_CURATED_PER_SECTION);
+    const curatedIds = new Set(curated.map((f) => f.id));
+    const rest = facts.filter(
+      (f) => section.categories.includes(f.category) && !curatedIds.has(f.id),
+    );
+    return { ...section, curated, rest, count: curated.length + rest.length };
+  });
+  const otherFacts = facts.filter((f) => f.category === "other");
   const hasNotes =
     (content?.caveats.length ?? 0) > 0 || warnings.length > 0 || capsHit.length > 0;
 
-  const navItems = content
+  const navItems: SidebarNavItem[] = content
     ? [
-        { href: "#why", title: "Why call today", count: null as number | null },
-        ...SECTIONS.map((s) => ({
+        { href: "#why", title: "Why call today", count: null },
+        ...sectionData.map((s) => ({
           href: `#${s.key}`,
           title: s.title,
-          count: sectionCount(s.categories),
+          count: s.count,
         })),
-        ...(otherCount > 0
-          ? [{ href: "#other", title: "Also found", count: otherCount }]
+        ...(otherFacts.length > 0
+          ? [{ href: "#other", title: "Also found", count: otherFacts.length }]
           : []),
         ...(hasNotes
           ? [{ href: "#notes", title: "Research notes", count: null }]
@@ -107,96 +145,59 @@ export default async function BriefPage({
       ]
     : [];
 
-  const controller = (
-    <ResearchController
-      placeId={placeId}
-      hasBrief={Boolean(brief)}
-      researchedAt={brief ? brief.createdAt.toISOString() : null}
-      activeRunId={activeRunId}
-      interruptedRunId={interruptedRunId}
-      maxRounds={maxRounds}
-    />
-  );
-
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8 lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:items-start lg:gap-12">
-      {/* Desktop sidebar: section nav + source overview */}
-      <aside className="hidden lg:block">
-        <div className="sticky top-20 space-y-8">
-          {navItems.length > 0 && (
-            <nav aria-label="Brief sections">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                On this brief
-              </p>
-              <ul className="space-y-0.5 text-sm">
-                {navItems.map((item) => (
-                  <li key={item.href}>
-                    <a
-                      href={item.href}
-                      className="flex items-center justify-between rounded-md px-2.5 py-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                    >
-                      {item.title}
-                      {item.count != null && (
-                        <span className="tabular-nums text-xs">{item.count}</span>
-                      )}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          )}
-          {sources.length > 0 && (
-            <div className="rounded-lg border p-3 text-xs text-muted-foreground">
-              <p className="flex items-center gap-1.5 font-medium text-foreground">
-                <FileSearch className="size-3.5" /> {sources.length} sources checked
-              </p>
-              <p className="mt-1.5 leading-relaxed">
-                Every fact links to its source. Click any citation chip to see
-                the exact quote and open the page.
-              </p>
-            </div>
-          )}
-        </div>
-      </aside>
+    // No items-start on the grid: the sidebar item must stretch to the full
+    // column height so its sticky nav stays visible while scrolling.
+    <main className="w-full flex-1 px-4 py-6 sm:px-6 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-8 lg:px-8">
+      <BriefSidebar navItems={navItems} sourceCount={sources.length} />
 
       <div className="min-w-0">
-        {/* Header (instant) */}
-        <header className="border-b pb-5">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {department && department.name !== "(resolving…)"
-              ? department.name
-              : "Researching department…"}
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            {department?.address && <span>{department.address}</span>}
-            {department?.phone && (
-              <a
-                href={`tel:${department.phone}`}
-                className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
-              >
-                <Phone className="size-3.5" /> {department.phone}
-              </a>
-            )}
-            {department?.website && (
-              <a
-                href={department.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
-              >
-                <Globe className="size-3.5" />
-                {new URL(department.website).hostname}
-              </a>
-            )}
-            {!department && <span className="font-mono text-xs">{placeId}</span>}
+        {/* Compact header: identity left, actions right, live run full-width */}
+        <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b pb-4">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+              {department && department.name !== "(resolving…)"
+                ? department.name
+                : "Researching department…"}
+            </h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              {department?.address && <span>{department.address}</span>}
+              {department?.phone && (
+                <a
+                  href={`tel:${department.phone}`}
+                  className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+                >
+                  <Phone className="size-3.5" /> {department.phone}
+                </a>
+              )}
+              {department?.website && (
+                <a
+                  href={department.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+                >
+                  <Globe className="size-3.5" />
+                  {new URL(department.website).hostname}
+                </a>
+              )}
+              {!department && <span className="font-mono text-xs">{placeId}</span>}
+            </div>
           </div>
-          {controller}
+          <ResearchController
+            placeId={placeId}
+            hasBrief={Boolean(brief)}
+            researchedAt={brief ? brief.createdAt.toISOString() : null}
+            activeRunId={activeRunId}
+            interruptedRunId={interruptedRunId}
+            maxRounds={maxRounds}
+          />
         </header>
 
         {content ? (
           <>
             {/* Mobile in-page nav */}
-            <nav className="sticky top-14 z-10 -mx-6 mb-2 flex gap-1 overflow-x-auto border-b bg-background/90 px-6 py-2 text-sm backdrop-blur lg:hidden">
+            <nav className="sticky top-14 z-10 -mx-4 mb-2 flex gap-1 overflow-x-auto border-b bg-background/90 px-4 py-2 text-sm backdrop-blur sm:-mx-6 sm:px-6 lg:hidden">
               {navItems.map((item) => (
                 <a
                   key={item.href}
@@ -209,7 +210,7 @@ export default async function BriefPage({
             </nav>
 
             {content.summary && (
-              <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
+              <p className="mt-5 max-w-4xl text-[15px] leading-relaxed text-muted-foreground">
                 {content.summary}
               </p>
             )}
@@ -222,7 +223,7 @@ export default async function BriefPage({
                 <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   <Sparkles className="size-4" /> Why call today
                 </h2>
-                <ol className="grid gap-3">
+                <ol className="grid gap-3 xl:grid-cols-3">
                   {content.whyCallToday.map((signal, i) => (
                     <li
                       key={i}
@@ -273,42 +274,43 @@ export default async function BriefPage({
               </section>
             )}
 
-            {/* Four sections */}
-            {SECTIONS.map((section) => {
-              const curated = (content.curatedFactIds[section.key] ?? [])
-                .map((id) => factById.get(id))
-                .filter((f): f is FactRow => Boolean(f));
-              const curatedIds = new Set(curated.map((f) => f.id));
-              const rest = facts.filter(
-                (f) =>
-                  section.categories.includes(f.category) && !curatedIds.has(f.id),
-              );
-              if (curated.length + rest.length === 0) return null;
+            {/* Four sections; an empty section says so honestly */}
+            {sectionData.map((section) => {
               const Icon = section.icon;
               return (
                 <section key={section.key} id={section.key} className="mt-8 scroll-mt-24">
                   <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     <Icon className="size-4" /> {section.title}
-                    <Badge variant="secondary">{curated.length + rest.length}</Badge>
+                    <Badge variant="secondary">{section.count}</Badge>
                   </h2>
-                  <FactSection curated={curated} rest={rest} sources={sourceById} />
+                  {section.count > 0 ? (
+                    <FactSection
+                      curated={section.curated}
+                      rest={section.rest}
+                      sources={sourceById}
+                    />
+                  ) : (
+                    <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      {section.emptyNote}
+                    </p>
+                  )}
                 </section>
               );
             })}
 
             {/* Also found: background findings, collapsed by default */}
-            {otherCount > 0 && (
+            {otherFacts.length > 0 && (
               <section id="other" className="mt-8 scroll-mt-24">
                 <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Also found
-                  <Badge variant="secondary">{otherCount}</Badge>
+                  <Badge variant="secondary">{otherFacts.length}</Badge>
                 </h2>
                 <p className="mb-2 text-xs text-muted-foreground">
                   Background findings that did not fit the main sections.
                 </p>
                 <FactSection
                   curated={[]}
-                  rest={facts.filter((f) => f.category === "other")}
+                  rest={otherFacts}
                   sources={sourceById}
                   collapsedByDefault
                 />

@@ -14,7 +14,7 @@ export interface SearchOptions {
   days?: number;
 }
 
-/** Keyword search (primary, PLAN §1). Stubbed when TAVILY_API_KEY is absent. */
+/** Keyword search (primary). Stubbed when TAVILY_API_KEY is absent. */
 export interface SearchClient {
   search(query: string, opts?: SearchOptions): Promise<SearchResult[]>;
   readonly stubbed: boolean;

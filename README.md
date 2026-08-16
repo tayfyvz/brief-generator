@@ -92,4 +92,4 @@ Single Docker image + managed Postgres. A `fly.toml` is included (`fly launch` â
 
 ## Design notes & write-up
 
-See `PLAN.md` for the full architecture rationale. The assignment write-up (what's useful vs noise, where this is confidently wrong, the 1M-departments design, cold-start in 30 seconds) ships with the submission notes.
+Architecture rationale lives in the code and `AGENTS.md` (priorities: reliable useful data, short clear briefs, simple engineering). The assignment write-up (what's useful vs noise, where this is confidently wrong, the 1M-departments design, cold-start in 30 seconds) ships with the submission notes.

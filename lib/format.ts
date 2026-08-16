@@ -25,5 +25,5 @@ export const TIER_LABELS: Record<number, string> = {
   1: "Official",
   2: "Industry",
   3: "Local press",
-  4: "Lead only",
+  4: "Community",
 };

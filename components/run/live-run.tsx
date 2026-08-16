@@ -7,7 +7,7 @@ import { useRunStore } from "@/lib/stores/run-store";
 import { cn } from "@/lib/utils";
 import type { RunPhase } from "@/lib/schemas/events";
 
-/** Live run view (PLAN §6): phase timeline + track cards + facts landing. */
+/** Live run view: phase timeline + track cards + facts landing. */
 
 function PhaseDot({ state }: { state: "pending" | "running" | "done" }) {
   if (state === "done") return <CheckCircle2 className="size-4 text-emerald-500" />;

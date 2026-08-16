@@ -2,7 +2,7 @@ import type { Anchor } from "@/lib/schemas/anchor";
 import type { EntityGraph } from "@/lib/schemas/llm";
 
 /**
- * The anchor packet (PLAN §3 N0); injected into every prompt with the
+ * The anchor packet; injected into every prompt with the
  * standing wrong-department rule (failure mode #1).
  */
 export function anchorPacket(anchor: Anchor, entityGraph?: EntityGraph | null): string {

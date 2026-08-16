@@ -5,7 +5,7 @@ import type { FactSummary, RunEvent, RunPhase } from "@/lib/schemas/events";
 import type { Warning } from "@/lib/schemas/tools";
 
 /**
- * The one client store (PLAN §6): live-run state fed by the SSE subscriber.
+ * The one client store: live-run state fed by the SSE subscriber.
  * Cached briefs never touch this; they are server-rendered.
  */
 export type TrackLiveState = {

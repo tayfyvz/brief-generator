@@ -1,7 +1,7 @@
 import { getEnv } from "@/lib/env";
 
 /**
- * Per-run hard caps (PLAN §2): searches/fetches are counted in-process
+ * Per-run hard caps: searches/fetches are counted in-process
  * (parallel tracks can't see each other's graph state mid-superstep, so a
  * shared synchronous counter is the race-free way to enforce a run budget).
  * When a cap hits, the run finishes with whatever it has; visibly.
@@ -23,14 +23,33 @@ function budgetFor(runId: string): RunBudget {
   return b;
 }
 
-/** Consume one unit of budget; false (and a recorded cap) when exhausted. */
-export function tryConsume(runId: string, kind: "search" | "fetch"): boolean {
+/**
+ * Fetches held back from the parallel tracks so the expansion loop can still
+ * verify tier-4 hints; a run whose whole fetch budget dies in round 0 never
+ * confirms the leads it mined (observed failure mode).
+ */
+export const EXPANSION_FETCH_RESERVE = 10;
+
+/**
+ * Consume one unit of budget; false (and a recorded cap) when exhausted.
+ * `reserve` leaves that many units untouched for later phases: tracks pass
+ * EXPANSION_FETCH_RESERVE so expansion rounds always have fetches left.
+ */
+export function tryConsume(
+  runId: string,
+  kind: "search" | "fetch",
+  reserve = 0,
+): boolean {
   const env = getEnv();
   const b = budgetFor(runId);
-  const limit = kind === "search" ? env.MAX_SEARCHES_PER_RUN : env.MAX_FETCHES_PER_RUN;
+  const hardLimit =
+    kind === "search" ? env.MAX_SEARCHES_PER_RUN : env.MAX_FETCHES_PER_RUN;
+  const limit = Math.max(1, hardLimit - reserve);
   const used = kind === "search" ? b.searches : b.fetches;
   if (used >= limit) {
-    b.capsHit.add(kind === "search" ? "max_searches" : "max_fetches");
+    if (used >= hardLimit) {
+      b.capsHit.add(kind === "search" ? "max_searches" : "max_fetches");
+    }
     return false;
   }
   if (kind === "search") b.searches += 1;

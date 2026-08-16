@@ -27,6 +27,17 @@ export const entityGraphSchema = z.object({
 });
 export type EntityGraph = z.infer<typeof entityGraphSchema>;
 
+/**
+ * Relevance gate over search results: which URLs are worth a fetch for THIS
+ * department. Blind top-N fetching burned entire fetch budgets on
+ * similarly-named departments in other states (observed failure mode).
+ */
+export const selectedResultsSchema = z.object({
+  /** URLs worth fetching, best first; empty when nothing is relevant. */
+  urls: z.array(z.string()),
+});
+export type SelectedResults = z.infer<typeof selectedResultsSchema>;
+
 /** Track planning output: the searches a research track wants to run. */
 export const trackPlanSchema = z.object({
   queries: z.array(z.string()),
@@ -50,16 +61,6 @@ export const extractedFactsSchema = z.object({
   facts: z.array(extractedFactSchema),
 });
 export type ExtractedFact = z.infer<typeof extractedFactSchema>;
-
-/**
- * Tier-4 pages (social media, fan wikis, forums) never become citations, but
- * they are lead mines (PLAN §4): unit numbers, apparatus years, names, and
- * events worth verifying against tier 1 to 3 sources in the expansion loop.
- */
-export const extractedLeadsSchema = z.object({
-  hints: z.array(z.string()),
-});
-export type ExtractedLeads = z.infer<typeof extractedLeadsSchema>;
 
 /** N3 planExpansion output: new leads from what earlier rounds discovered. */
 export const expansionLeadSchema = z.object({

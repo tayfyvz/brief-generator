@@ -1,13 +1,15 @@
 /**
- * Source playbook (PLAN §4); a prompt asset injected into every research
- * track. Trust tiers resolve conflicts upward; Tier 4 generates leads but
- * never sole citations. Guidance, not a fence.
+ * Source playbook; a prompt asset injected into every research track.
+ * Trust tiers resolve conflicts upward; tier 4 is citable as clearly-labeled
+ * community data, superseded by any tier 1-3 source carrying the same datum.
+ * Guidance, not a fence.
  */
 export const SOURCE_PLAYBOOK = `
 ## Source playbook; where good facts live
 
-Trust tiers (conflicts resolve toward lower tier numbers; tier 4 is
-leads-only; never cite it as the sole source of a fact):
+Trust tiers (conflicts resolve toward lower tier numbers; tier 4 facts are
+citable but render as unconfirmed community data and are superseded whenever
+a tier 1-3 source carries the same datum):
 
 **Tier 1; authoritative:** the department's own site; municipal/county sites;
 state procurement portals; budgets, audits, CAFRs, bond ordinances; council
@@ -20,9 +22,10 @@ Fire Apparatus Magazine; Firehouse.com.
 
 **Tier 3; local press:** local news sites, county/regional outlets.
 
-**Tier 4; leads only:** fire.fandom.com, stationboss, YouTube, Facebook,
-forums, enthusiast photo sites. Use these to discover unit numbers, apparatus
-years, and station assignments to verify against tier 1-3 sources.
+**Tier 4; community:** fire.fandom.com, stationboss, YouTube, Facebook,
+forums, enthusiast photo sites. For small volunteer departments these often
+hold the only apparatus roster on the web; extract the concrete data (unit
+numbers, years, makes, models) and try to confirm it against tier 1-3.
 
 Prefer these source *types* but pursue anything relevant. Always discard
 sources about similarly-named departments in other places; verify the

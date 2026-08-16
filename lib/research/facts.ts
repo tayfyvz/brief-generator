@@ -62,10 +62,13 @@ export function releaseRunQuotes(runId: string): void {
 }
 
 /**
- * Persist extracted facts for one source page. Enforces the hard rules:
- * quotes must appear verbatim in the snapshot, and tier-4 sources never
- * become citations (their facts are dropped; they act as leads only).
- * Returns stored facts plus how many were dropped for a missing quote.
+ * Persist extracted facts for one source page. Quotes must appear verbatim
+ * in the snapshot or the fact is dropped. Tier-4 (community/enthusiast)
+ * sources ARE citable: for tiny volunteer departments they are often the only
+ * place the apparatus roster exists, and an honestly-labeled community fact
+ * beats an empty section. Their facts are stored at low confidence, rendered
+ * with an "unconfirmed" badge, and replaced by higher-tier facts whenever the
+ * verifier finds the same datum from a better source.
  */
 export async function storeExtractedFacts(opts: {
   runId: string;
@@ -77,7 +80,6 @@ export async function storeExtractedFacts(opts: {
   round: number;
 }): Promise<{ stored: StoredFact[]; droppedQuotes: number }> {
   const { runId, placeId, sourceId, tier, pageMarkdown, extracted, round } = opts;
-  if (tier >= 4) return { stored: [], droppedQuotes: 0 };
 
   const withQuotes = extracted.filter((f) => quoteAppearsIn(f.quote, pageMarkdown));
   const droppedQuotes = extracted.length - withQuotes.length;
@@ -105,7 +107,8 @@ export async function storeExtractedFacts(opts: {
         quote: f.quote,
         asOfDate: normalizeAsOfDate(f.asOfDate),
         discoveredRound: round,
-        confidence: f.confidence,
+        // Community sources never claim better than low confidence.
+        confidence: tier >= 4 ? "low" : f.confidence,
         usefulness: f.usefulness,
         verification: "unverified",
       })),

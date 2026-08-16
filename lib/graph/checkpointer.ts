@@ -2,7 +2,7 @@ import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { getEnv } from "@/lib/env";
 
 /**
- * LangGraph Postgres checkpointer (PLAN §2 crash safety): graph state is
+ * LangGraph Postgres checkpointer: graph state is
  * persisted per node, so interrupted runs can resume mid-phase with the
  * run id as thread id.
  */

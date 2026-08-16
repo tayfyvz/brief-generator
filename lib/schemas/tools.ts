@@ -20,7 +20,7 @@ export const fetchedPageSchema = z.object({
 });
 export type FetchedPage = z.infer<typeof fetchedPageSchema>;
 
-/** A visible degradation notice (PLAN: fail soft, never silently). */
+/** A visible degradation notice (fail soft, never silently). */
 export const warningSchema = z.object({
   scope: z.string(), // e.g. "search", "fetch", "track:news"
   message: z.string(),

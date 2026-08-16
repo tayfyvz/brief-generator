@@ -4,7 +4,7 @@ import { warningSchema } from "./tools";
 
 /**
  * Run events; the single source of truth for what flows over SSE and what
- * is persisted in run_events for lossless replay (PLAN §2).
+ * is persisted in run_events for lossless replay.
  */
 
 export const factSummarySchema = z.object({

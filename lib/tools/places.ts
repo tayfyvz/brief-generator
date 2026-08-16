@@ -3,7 +3,7 @@ import { getEnv } from "@/lib/env";
 import { anchorSchema, type Anchor } from "@/lib/schemas/anchor";
 
 /**
- * Google Places Details client (PLAN §3 N0). Place ID → anchor packet.
+ * Google Places Details client. Place ID → anchor packet.
  * Returns null when the Place ID does not resolve. Falls back to a stub
  * when GOOGLE_PLACES_API_KEY is missing; never blocks on a missing key.
  */

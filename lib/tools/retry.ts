@@ -30,7 +30,7 @@ export async function withRetry<T>(
 }
 
 /**
- * Fail-soft boundary (PLAN §3): run with retries; on final failure return
+ * Fail-soft boundary: run with retries; on final failure return
  * `fallback` and emit a visible warning instead of crashing the run.
  */
 export async function withDegrade<T>(

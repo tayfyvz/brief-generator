@@ -40,7 +40,7 @@ export const departments = pgTable("departments", {
     .defaultNow(),
 });
 
-/** status: queued | running | done | failed | interrupted (validated by Zod, PLAN §5) */
+/** status: queued | running | done | failed | interrupted (validated by Zod) */
 export const researchRuns = pgTable(
   "research_runs",
   {
@@ -59,7 +59,7 @@ export const researchRuns = pgTable(
   (t) => [index("research_runs_place_id_idx").on(t.placeId)],
 );
 
-/** Append-only SSE replay log (PLAN §2): reconnects replay from Last-Event-ID. */
+/** Append-only SSE replay log: reconnects replay from Last-Event-ID. */
 export const runEvents = pgTable(
   "run_events",
   {
@@ -96,7 +96,7 @@ export const sources = pgTable(
   (t) => [index("sources_run_id_idx").on(t.runId)],
 );
 
-/** No source, no fact: source_id is NOT NULL by design (PLAN §5). */
+/** No source, no fact: source_id is NOT NULL by design. */
 export const facts = pgTable(
   "facts",
   {
@@ -136,7 +136,7 @@ export const facts = pgTable(
   ],
 );
 
-/** Entity graph nodes; relations live in attributes.relations (PLAN §5, no edges table). */
+/** Entity graph nodes; relations live in attributes.relations. */
 export const entities = pgTable(
   "entities",
   {

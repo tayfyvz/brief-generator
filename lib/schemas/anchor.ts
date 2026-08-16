@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 
 /**
- * The disambiguation anchor (PLAN §3 N0): what Google Places tells us about
+ * The disambiguation anchor: what Google Places tells us about
  * the department. Injected into every prompt to reject wrong-department
  * sources (failure mode #1).
  */

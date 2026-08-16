@@ -7,7 +7,7 @@ import { placeIdSchema } from "@/lib/schemas/anchor";
 export const dynamic = "force-dynamic";
 
 /**
- * AE quick-find (PLAN §6): Postgres FTS over claim/quote/tags for the
+ * AE quick-find: Postgres FTS over claim/quote/tags for the
  * department's current brief. Highlight markers ⟦…⟧ are converted to <mark>
  * client-side (no HTML crosses the wire).
  */

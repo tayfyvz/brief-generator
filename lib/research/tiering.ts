@@ -1,5 +1,5 @@
 /**
- * Source trust tiers (PLAN §4). Heuristic by domain/URL; the playbook prompt
+ * Source trust tiers. Heuristic by domain/URL; the playbook prompt
  * gives the LLM the same taxonomy. Conflicts resolve toward lower tier
  * numbers; tier 4 generates leads but never sole citations.
  */

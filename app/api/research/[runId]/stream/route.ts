@@ -7,7 +7,7 @@ import type { PersistedRunEvent, RunEvent } from "@/lib/schemas/events";
 export const dynamic = "force-dynamic";
 
 /**
- * SSE stream for a run (PLAN §2): replays the persisted run_events log first
+ * SSE stream for a run: replays the persisted run_events log first
  * (from Last-Event-ID, so reconnects are lossless), then tails live events.
  */
 export async function GET(

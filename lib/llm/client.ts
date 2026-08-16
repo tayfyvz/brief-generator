@@ -6,7 +6,7 @@ import { getEnv } from "@/lib/env";
 import { getStubStructuredOutput } from "./stub";
 
 /**
- * Thin LLM boundary (PLAN §1): LangGraph orchestrates, nodes call this
+ * Thin LLM boundary: LangGraph orchestrates, nodes call this
  * directly; no LangChain model/prompt wrappers. One method: structured
  * output validated against a Zod schema. Falls back to a deterministic
  * stub when ANTHROPIC_API_KEY is missing.

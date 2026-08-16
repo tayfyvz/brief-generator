@@ -20,7 +20,7 @@ export interface StoredFact {
 
 const concat = <T>(a: T[], b: T[]) => a.concat(b);
 
-/** Shared graph state (PLAN §3). */
+/** Shared graph state. */
 export const ResearchState = Annotation.Root({
   runId: Annotation<string>,
   placeId: Annotation<string>,

@@ -1,4 +1,4 @@
-/** Staleness flagging (PLAN §3 N4): facts older than ~18 months get a badge. */
+/** Staleness flagging: facts older than ~18 months get a badge. */
 
 export const STALE_AFTER_MONTHS = 18;
 

@@ -266,8 +266,10 @@ export function getStubStructuredOutput(task: string, context: unknown): unknown
         conflicts: [],
       };
     }
-    case "extractLeads": {
-      return { hints: [] };
+    case "selectResults": {
+      // Offline fixtures are all relevant: keep the naive top-N behavior.
+      const ctx = context as { results: { url: string }[]; max: number };
+      return { urls: ctx.results.slice(0, ctx.max).map((r) => r.url) };
     }
     case "planExpansion": {
       const ctx = context as { round: number };

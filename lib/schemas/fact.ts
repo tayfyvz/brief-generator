@@ -36,7 +36,7 @@ export const verificationSchema = z.enum([
 ]);
 export type Verification = z.infer<typeof verificationSchema>;
 
-/** Source trust tier (PLAN §4): 1 authoritative … 4 leads-only. */
+/** Source trust tier: 1 authoritative … 4 community (unconfirmed). */
 export const tierSchema = z.number().int().min(1).max(4);
 
 export const sourceSchema = z.object({
@@ -54,7 +54,7 @@ export type Source = z.infer<typeof sourceSchema>;
 
 /**
  * A single cited fact. `sourceId` + verbatim `quote` are mandatory ; 
- * uncited facts never exist as data (PLAN hard rule).
+ * uncited facts never exist as data.
  */
 export const factSchema = z.object({
   id: z.string().uuid(),
