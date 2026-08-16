@@ -19,24 +19,43 @@ import {
   llmBriefSchema,
   trackPlanSchema,
 } from "@/lib/schemas/llm";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import type { EmitFn } from "@/lib/schemas/events";
 import type { FetchedPage, Warning } from "@/lib/schemas/tools";
 import type { ResearchStateType, StoredFact } from "./state";
 
 type Update = Partial<ResearchStateType>;
 
+/** Pull the run-event emitter out of the graph config (noop when absent). */
+function emitterOf(config?: LangGraphRunnableConfig): EmitFn {
+  const emit = config?.configurable?.emit as EmitFn | undefined;
+  return emit ?? (() => undefined);
+}
+
 /** N0 — deterministic Places lookup; anchors every later prompt. */
-export async function resolveAnchor(state: ResearchStateType): Promise<Update> {
+export async function resolveAnchor(
+  state: ResearchStateType,
+  config?: LangGraphRunnableConfig,
+): Promise<Update> {
+  const emit = emitterOf(config);
+  emit({ type: "phase", phase: "anchor", status: "start" });
   const anchor = await getPlacesClient().getDetails(state.placeId);
   if (!anchor) {
     throw new Error(`Place ID ${state.placeId} did not resolve to a place`);
   }
   await upsertDepartment(anchor);
+  emit({ type: "phase", phase: "anchor", status: "done" });
   return { anchor };
 }
 
 /** N1 — the keystone: who operates this station and who buys the trucks? */
-export async function resolveEntity(state: ResearchStateType): Promise<Update> {
+export async function resolveEntity(
+  state: ResearchStateType,
+  config?: LangGraphRunnableConfig,
+): Promise<Update> {
   if (!state.anchor) throw new Error("resolveEntity requires an anchor");
+  const emit = emitterOf(config);
+  emit({ type: "phase", phase: "entity", status: "start" });
   const anchor = state.anchor;
   const warnings: Warning[] = [];
   const search = getSearchClient();
@@ -95,6 +114,9 @@ export async function resolveEntity(state: ResearchStateType): Promise<Update> {
     );
   }
 
+  for (const w of warnings) emit({ type: "warning", warning: w });
+  emit({ type: "phase", phase: "entity", status: "done" });
+
   // Entity pages are NOT marked visited: tracks must still be able to
   // extract facts from them (snapshot storage dedupes the re-fetch).
   return {
@@ -115,10 +137,25 @@ const MAX_FETCHES_PER_QUERY = 2;
 
 /** N2 — one research track: plan queries → search → fetch → extract facts. */
 export function makeTrackNode(track: TrackDef) {
-  return async function trackNode(state: ResearchStateType): Promise<Update> {
+  return async function trackNode(
+    state: ResearchStateType,
+    config?: LangGraphRunnableConfig,
+  ): Promise<Update> {
     if (!state.anchor) throw new Error(`track ${track.key} requires an anchor`);
+    const emit = emitterOf(config);
     const anchor = state.anchor;
     const warnings: Warning[] = [];
+    const pushWarning = (w: Warning) => {
+      warnings.push(w);
+      emit({ type: "warning", warning: w });
+    };
+    emit({
+      type: "track_update",
+      track: track.key,
+      status: "running",
+      searchCount: 0,
+      factCount: 0,
+    });
     const search = getSearchClient();
     const fetch = getFetchClient();
     const llm = getLlmClient();
@@ -146,7 +183,7 @@ export function makeTrackNode(track: TrackDef) {
         }),
       { queries: [] },
       `track:${track.key}:plan`,
-      (w) => warnings.push(w),
+      pushWarning,
     );
 
     const seenQueries = new Set(state.searchedQueries);
@@ -163,7 +200,7 @@ export function makeTrackNode(track: TrackDef) {
         () => search.search(query, { maxResults: 5 }),
         [],
         `track:${track.key}:search`,
-        (w) => warnings.push(w),
+        pushWarning,
       );
       const urls = results
         .map((r) => r.url)
@@ -177,7 +214,7 @@ export function makeTrackNode(track: TrackDef) {
           () => fetch.fetchPage(url),
           null,
           `track:${track.key}:fetch`,
-          (w) => warnings.push(w),
+          pushWarning,
         );
         if (!page) continue;
 
@@ -203,7 +240,7 @@ export function makeTrackNode(track: TrackDef) {
             }),
           { facts: [] },
           `track:${track.key}:extract`,
-          (w) => warnings.push(w),
+          pushWarning,
         );
 
         const { stored, droppedQuotes } = await storeExtractedFacts({
@@ -216,14 +253,36 @@ export function makeTrackNode(track: TrackDef) {
           round: state.round,
         });
         storedFacts.push(...stored);
+        for (const fact of stored) {
+          emit({
+            type: "fact_added",
+            fact: {
+              id: fact.id,
+              category: fact.category,
+              claim: fact.claim,
+              quote: fact.quote,
+              sourceId: fact.sourceId,
+              tier: fact.tier,
+              asOfDate: fact.asOfDate,
+            },
+          });
+        }
         if (droppedQuotes > 0) {
-          warnings.push({
+          pushWarning({
             scope: `track:${track.key}:verify-quote`,
             message: `${droppedQuotes} fact(s) dropped: quote not found verbatim in ${page.url}`,
           });
         }
       }
     }
+
+    emit({
+      type: "track_update",
+      track: track.key,
+      status: "done",
+      searchCount: queries.length,
+      factCount: storedFacts.length,
+    });
 
     return {
       facts: storedFacts,
@@ -235,8 +294,13 @@ export function makeTrackNode(track: TrackDef) {
 }
 
 /** N5 — verified facts only → persisted brief JSON. */
-export async function synthesize(state: ResearchStateType): Promise<Update> {
+export async function synthesize(
+  state: ResearchStateType,
+  config?: LangGraphRunnableConfig,
+): Promise<Update> {
   if (!state.anchor) throw new Error("synthesize requires an anchor");
+  const emit = emitterOf(config);
+  emit({ type: "phase", phase: "synthesize", status: "start" });
   const warnings: Warning[] = [];
   const llm = getLlmClient();
   const factList = state.facts;
@@ -319,5 +383,7 @@ export async function synthesize(state: ResearchStateType): Promise<Update> {
       set: { runId: state.runId, content, createdAt: new Date() },
     });
 
+  for (const w of warnings) emit({ type: "warning", warning: w });
+  emit({ type: "phase", phase: "synthesize", status: "done" });
   return { warnings };
 }
