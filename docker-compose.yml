@@ -1,0 +1,33 @@
+services:
+  app:
+    build: .
+    ports:
+      # Host ports offset (3100/5433) to avoid colliding with other local stacks.
+      - "3100:3000"
+    environment:
+      DATABASE_URL: postgres://brief:brief@postgres:5432/brief
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: brief
+      POSTGRES_PASSWORD: brief
+      POSTGRES_DB: brief
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brief -d brief"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
