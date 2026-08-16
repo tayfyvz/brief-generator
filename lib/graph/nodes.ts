@@ -11,10 +11,14 @@ import { getFetchClient } from "@/lib/tools/firecrawl";
 import { getPlacesClient } from "@/lib/tools/places";
 import { withDegrade } from "@/lib/tools/retry";
 import { getSearchClient } from "@/lib/tools/tavily";
+import { getSimilarityClient } from "@/lib/tools/exa";
+import { hasBudget, recordCap, tryConsume } from "@/lib/research/budget";
+import { getEnv } from "@/lib/env";
 import { upsertDepartment } from "@/lib/db/queries";
 import { briefContentSchema } from "@/lib/schemas/brief";
 import {
   entityGraphSchema,
+  expansionPlanSchema,
   extractedFactsSchema,
   llmBriefSchema,
   trackPlanSchema,
@@ -63,15 +67,18 @@ export async function resolveEntity(
   const llm = getLlmClient();
 
   const query = `who operates ${anchor.name} ${anchor.city ?? ""} ${anchor.state ?? ""} fire department`;
-  const results = await withDegrade(
-    () => search.search(query, { maxResults: 5 }),
-    [],
-    "entity:search",
-    (w) => warnings.push(w),
-  );
+  const results = tryConsume(state.runId, "search")
+    ? await withDegrade(
+        () => search.search(query, { maxResults: 5 }),
+        [],
+        "entity:search",
+        (w) => warnings.push(w),
+      )
+    : [];
 
   const pages: FetchedPage[] = [];
   for (const result of results.slice(0, 2)) {
+    if (!tryConsume(state.runId, "fetch")) break;
     const page = await withDegrade(
       () => fetch.fetchPage(result.url),
       null,
@@ -195,7 +202,12 @@ export function makeTrackNode(track: TrackDef) {
     const storedFacts: StoredFact[] = [];
     const newUrls: string[] = [];
 
+    let budgetExhausted = false;
     for (const query of queries) {
+      if (!tryConsume(state.runId, "search")) {
+        budgetExhausted = true;
+        break;
+      }
       const results = await withDegrade(
         () => search.search(query, { maxResults: 5 }),
         [],
@@ -208,6 +220,10 @@ export function makeTrackNode(track: TrackDef) {
         .slice(0, MAX_FETCHES_PER_QUERY);
 
       for (const url of urls) {
+        if (!tryConsume(state.runId, "fetch")) {
+          budgetExhausted = true;
+          break;
+        }
         visited.add(url);
         newUrls.push(url);
         const page = await withDegrade(
@@ -274,8 +290,15 @@ export function makeTrackNode(track: TrackDef) {
           });
         }
       }
+      if (budgetExhausted) break;
     }
 
+    if (budgetExhausted) {
+      pushWarning({
+        scope: `track:${track.key}:budget`,
+        message: "Run budget reached — track finished with what it had.",
+      });
+    }
     emit({
       type: "track_update",
       track: track.key,
@@ -291,6 +314,183 @@ export function makeTrackNode(track: TrackDef) {
       visitedUrls: newUrls,
     };
   };
+}
+
+const MAX_LEADS_PER_ROUND = 5;
+
+/**
+ * N3 ⟲ — expansion round: the planner turns discovered entities and facts
+ * into new leads (keyword searches + Exa find-similar), executes them, and
+ * extracts more facts. Loops until two dry rounds, the round cap, or the
+ * run budget (see shouldContinueExpansion).
+ */
+export async function planExpansion(
+  state: ResearchStateType,
+  config?: LangGraphRunnableConfig,
+): Promise<Update> {
+  if (!state.anchor) throw new Error("planExpansion requires an anchor");
+  const emit = emitterOf(config);
+  const round = state.round + 1;
+  emit({ type: "phase", phase: "expansion", status: "start", round });
+
+  const anchor = state.anchor;
+  const warnings: Warning[] = [];
+  const pushWarning = (w: Warning) => {
+    warnings.push(w);
+    emit({ type: "warning", warning: w });
+  };
+  const llm = getLlmClient();
+  const search = getSearchClient();
+  const similarity = getSimilarityClient();
+  const fetch = getFetchClient();
+  const officialDomains = state.entityGraph?.officialDomains ?? [];
+
+  const plan = await withDegrade(
+    () =>
+      llm.structured({
+        task: "planExpansion",
+        system:
+          "You plan the next research round for a fire-department sales brief. " +
+          "Turn discovered entities into leads: dealers → sibling delivery pages (kind 'similar'); " +
+          "member towns → budget PDFs and council minutes; legislators → appropriations; " +
+          "old apparatus → replacement-cycle queries. Then play completeness critic: " +
+          "what would an AE ask that the facts still can't answer? Return no leads when " +
+          "another round would not add sales-relevant facts.",
+        prompt: [
+          anchorPacket(anchor, state.entityGraph),
+          SOURCE_PLAYBOOK,
+          `## Round ${round} of ${getEnv().MAX_ROUNDS}`,
+          "## Facts so far",
+          ...state.facts.map((f) => `- [${f.category}] ${f.claim}`),
+          "## Queries already searched (do not repeat)",
+          ...state.searchedQueries.map((q) => `- ${q}`),
+        ].join("\n"),
+        schema: expansionPlanSchema,
+        context: { round, orgName: anchor.name },
+      }),
+    { leads: [], criticNote: "" },
+    "expansion:plan",
+    pushWarning,
+  );
+
+  const seenQueries = new Set(state.searchedQueries);
+  const visited = new Set(state.visitedUrls);
+  const leads = plan.leads
+    .filter((lead) => !seenQueries.has(leadKey(lead.kind, lead.query)))
+    .slice(0, MAX_LEADS_PER_ROUND);
+
+  const storedFacts: StoredFact[] = [];
+  const newQueries: string[] = [];
+  const newUrls: string[] = [];
+
+  for (const lead of leads) {
+    if (!tryConsume(state.runId, "search")) break;
+    newQueries.push(leadKey(lead.kind, lead.query));
+    const results = await withDegrade(
+      () =>
+        lead.kind === "similar"
+          ? similarity.findSimilar(lead.query, 5)
+          : search.search(lead.query, { maxResults: 5 }),
+      [],
+      `expansion:${lead.kind}`,
+      pushWarning,
+    );
+    const urls = results
+      .map((r) => r.url)
+      .filter((u) => !visited.has(u))
+      .slice(0, MAX_FETCHES_PER_QUERY);
+
+    for (const url of urls) {
+      if (!tryConsume(state.runId, "fetch")) break;
+      visited.add(url);
+      newUrls.push(url);
+      const page = await withDegrade(
+        () => fetch.fetchPage(url),
+        null,
+        "expansion:fetch",
+        pushWarning,
+      );
+      if (!page) continue;
+
+      const tier = tierForUrl(url, officialDomains);
+      const { sourceId } = await saveSnapshot(state.runId, page, tier);
+      const extraction = await withDegrade(
+        () =>
+          llm.structured({
+            task: "extractFacts",
+            system:
+              "You extract sales-relevant facts about ONE fire department from ONE page. " +
+              "Every fact needs a claim plus a VERBATIM quote copied exactly from the page. " +
+              "Skip anything about a different department than the anchor.",
+            prompt: [
+              anchorPacket(anchor, state.entityGraph),
+              `## Lead: ${lead.reason}`,
+              `## Page: ${page.url}`,
+              page.markdown.slice(0, 12000),
+            ].join("\n\n"),
+            schema: extractedFactsSchema,
+            context: { page, anchor },
+          }),
+        { facts: [] },
+        "expansion:extract",
+        pushWarning,
+      );
+
+      const { stored } = await storeExtractedFacts({
+        runId: state.runId,
+        placeId: state.placeId,
+        sourceId,
+        tier,
+        pageMarkdown: page.markdown,
+        extracted: extraction.facts,
+        round,
+      });
+      storedFacts.push(...stored);
+      for (const fact of stored) {
+        emit({
+          type: "fact_added",
+          fact: {
+            id: fact.id,
+            category: fact.category,
+            claim: fact.claim,
+            quote: fact.quote,
+            sourceId: fact.sourceId,
+            tier: fact.tier,
+            asOfDate: fact.asOfDate,
+          },
+        });
+      }
+    }
+  }
+
+  emit({ type: "phase", phase: "expansion", status: "done", round });
+  return {
+    round,
+    dryRounds: storedFacts.length === 0 ? state.dryRounds + 1 : 0,
+    facts: storedFacts,
+    warnings,
+    searchedQueries: newQueries,
+    visitedUrls: newUrls,
+  };
+}
+
+function leadKey(kind: string, query: string): string {
+  return kind === "similar" ? `similar:${query}` : query;
+}
+
+/** Loop control for N3: two dry rounds, round cap, or budget exhaustion. */
+export function shouldContinueExpansion(
+  state: ResearchStateType,
+): "planExpansion" | "synthesize" {
+  const env = getEnv();
+  if (state.dryRounds >= 2) return "synthesize";
+  if (state.round >= env.MAX_ROUNDS) {
+    recordCap(state.runId, "max_rounds");
+    return "synthesize";
+  }
+  // Budget exhausted mid-round: another round cannot search or fetch.
+  if (!hasBudget(state.runId)) return "synthesize";
+  return "planExpansion";
 }
 
 /** N5 — verified facts only → persisted brief JSON. */

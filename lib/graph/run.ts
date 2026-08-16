@@ -4,6 +4,7 @@ import { departments, researchRuns } from "@/lib/db/schema";
 import { buildResearchGraph } from "./build";
 import { getCheckpointer } from "./checkpointer";
 import { releaseRunQuotes } from "@/lib/research/facts";
+import { capsHitFor, releaseBudget } from "@/lib/research/budget";
 import type { EmitFn } from "@/lib/schemas/events";
 import type { ResearchStateType } from "./state";
 
@@ -55,19 +56,21 @@ export async function executeGraph(opts: {
       resume ? null : { runId, placeId },
       config,
     )) as ResearchStateType;
+    const capsHit = capsHitFor(runId);
     await db
       .update(researchRuns)
       .set({
         status: "done",
         finishedAt: new Date(),
         roundCount: finalState.round,
+        capsHit,
       })
       .where(eq(researchRuns.id, runId));
     emit({
       type: "run_finished",
       status: "done",
       factCount: finalState.facts.length,
-      capsHit: [],
+      capsHit,
     });
     return {
       runId,
@@ -91,6 +94,7 @@ export async function executeGraph(opts: {
     return { runId, status: "failed", factCount: 0, warnings: [], error: message };
   } finally {
     releaseRunQuotes(runId);
+    releaseBudget(runId);
   }
 }
 

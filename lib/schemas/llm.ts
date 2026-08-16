@@ -49,6 +49,23 @@ export const extractedFactsSchema = z.object({
 });
 export type ExtractedFact = z.infer<typeof extractedFactSchema>;
 
+/** N3 planExpansion output: new leads from what earlier rounds discovered. */
+export const expansionLeadSchema = z.object({
+  /** "search" = keyword query (Tavily); "similar" = Exa find-similar on a URL. */
+  kind: z.enum(["search", "similar"]),
+  /** The query text, or the URL to find pages similar to. */
+  query: z.string(),
+  reason: z.string(),
+});
+export type ExpansionLead = z.infer<typeof expansionLeadSchema>;
+
+export const expansionPlanSchema = z.object({
+  leads: z.array(expansionLeadSchema),
+  /** Completeness critic: what would an AE ask that we still can't answer? */
+  criticNote: z.string(),
+});
+export type ExpansionPlan = z.infer<typeof expansionPlanSchema>;
+
 /** N5 synthesize output — maps onto BriefContent (generatedAt added by code). */
 export const llmBriefSchema = z.object({
   summary: z.string(),

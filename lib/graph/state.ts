@@ -35,6 +35,8 @@ export const ResearchState = Annotation.Root({
   searchedQueries: Annotation<string[]>({ reducer: concat, default: () => [] }),
   visitedUrls: Annotation<string[]>({ reducer: concat, default: () => [] }),
   round: Annotation<number>({ reducer: (_a, b) => b, default: () => 0 }),
+  /** Consecutive expansion rounds that produced zero new facts. */
+  dryRounds: Annotation<number>({ reducer: (_a, b) => b, default: () => 0 }),
 });
 
 export type ResearchStateType = typeof ResearchState.State;

@@ -1,7 +1,14 @@
 import { END, START, StateGraph } from "@langchain/langgraph";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { ResearchState } from "./state";
-import { makeTrackNode, resolveAnchor, resolveEntity, synthesize } from "./nodes";
+import {
+  makeTrackNode,
+  planExpansion,
+  resolveAnchor,
+  resolveEntity,
+  shouldContinueExpansion,
+  synthesize,
+} from "./nodes";
 import { TRACKS } from "./tracks";
 import type { TrackDef } from "./nodes";
 
@@ -12,9 +19,10 @@ function track(key: string): TrackDef {
 }
 
 /**
- * Research graph (PLAN §3): anchor → entity → 6-track fan-out → synthesize.
- * Tracks run in one parallel superstep; synthesize joins on all of them.
- * Expansion loop (N3) and verify (N4) arrive in build steps 6–7.
+ * Research graph (PLAN §3): anchor → entity → 6-track fan-out → expansion
+ * loop ⟲ → synthesize. Tracks run in one parallel superstep and join on
+ * planExpansion, which loops until two dry rounds, the round cap, or the
+ * run budget. Verify (N4) arrives in build step 7.
  * Node names are spelled out because LangGraph types edges by literal name.
  */
 export function buildResearchGraph(checkpointer?: BaseCheckpointSaver) {
@@ -27,6 +35,7 @@ export function buildResearchGraph(checkpointer?: BaseCheckpointSaver) {
     .addNode("trackFunding", makeTrackNode(track("funding")))
     .addNode("trackNews", makeTrackNode(track("news")))
     .addNode("trackDiscovery", makeTrackNode(track("discovery")))
+    .addNode("planExpansion", planExpansion)
     .addNode("synthesize", synthesize)
     .addEdge(START, "resolveAnchor")
     .addEdge("resolveAnchor", "resolveEntity")
@@ -36,12 +45,16 @@ export function buildResearchGraph(checkpointer?: BaseCheckpointSaver) {
     .addEdge("resolveEntity", "trackFunding")
     .addEdge("resolveEntity", "trackNews")
     .addEdge("resolveEntity", "trackDiscovery")
-    .addEdge("trackLeadership", "synthesize")
-    .addEdge("trackFleet", "synthesize")
-    .addEdge("trackProcurement", "synthesize")
-    .addEdge("trackFunding", "synthesize")
-    .addEdge("trackNews", "synthesize")
-    .addEdge("trackDiscovery", "synthesize")
+    .addEdge("trackLeadership", "planExpansion")
+    .addEdge("trackFleet", "planExpansion")
+    .addEdge("trackProcurement", "planExpansion")
+    .addEdge("trackFunding", "planExpansion")
+    .addEdge("trackNews", "planExpansion")
+    .addEdge("trackDiscovery", "planExpansion")
+    .addConditionalEdges("planExpansion", shouldContinueExpansion, [
+      "planExpansion",
+      "synthesize",
+    ])
     .addEdge("synthesize", END);
 
   return graph.compile(checkpointer ? { checkpointer } : undefined);

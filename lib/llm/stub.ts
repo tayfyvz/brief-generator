@@ -244,6 +244,31 @@ export function getStubStructuredOutput(task: string, context: unknown): unknown
       const ctx = context as ExtractFactsContext;
       return { facts: FIXTURE_EXTRACTIONS[ctx.page.url] ?? [] };
     }
+    case "planExpansion": {
+      const ctx = context as { round: number };
+      if (ctx.round <= 1) {
+        return {
+          leads: [
+            {
+              kind: "similar",
+              query: "https://www.firefighterone.com/deliveries/nhrfr-inferno-102",
+              reason: "Dealer delivery page — find sibling delivery pages for the same department.",
+            },
+            {
+              kind: "search",
+              query: "NHRFR capital budget bond ordinance fire apparatus",
+              reason: "Member-town capital budgets fund apparatus purchases.",
+            },
+          ],
+          criticNote:
+            "An AE would still ask: is there an active bid or a budgeted apparatus line item for next fiscal year?",
+        };
+      }
+      return {
+        leads: [],
+        criticNote: "No further productive leads — coverage looks complete for offline fixtures.",
+      };
+    }
     case "synthesize": {
       const ctx = context as SynthesizeContext;
       const byCategory = (cats: string[]) =>
