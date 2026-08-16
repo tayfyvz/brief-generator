@@ -20,7 +20,9 @@ import {
   type SidebarNavItem,
 } from "@/components/brief/brief-sidebar";
 import { BriefPending } from "@/components/brief/brief-pending";
+import { CopyBriefButton } from "@/components/brief/copy-brief-button";
 import { BriefsMap } from "@/components/briefs-map";
+import { briefToMarkdown } from "@/lib/brief-text";
 import { FactSection } from "@/components/brief/fact-section";
 import { FactSearch } from "@/components/brief/fact-search";
 import { HeaderTitle } from "@/components/brief/header-title";
@@ -176,6 +178,36 @@ export default async function BriefPage({
     ? [department.city, department.state].filter(Boolean).join(", ")
     : "";
 
+  // One clipboard-ready markdown rendition of exactly what the page shows.
+  const copyText =
+    content && department && brief
+      ? briefToMarkdown({
+          name: department.name,
+          location,
+          address: department.address,
+          phone: department.phone,
+          website: department.website,
+          researchedAt: brief.createdAt,
+          summary: content.summary,
+          whyCallToday: content.whyCallToday,
+          sections: sectionData.map((s) => ({
+            title: s.title,
+            emptyNote: s.emptyNote,
+            facts: [...s.curated, ...s.rest].map((f) => ({
+              claim: f.claim,
+              sourceUrl: sourceById[f.sourceId]?.url,
+            })),
+          })),
+          notes: [
+            ...(capsHit.length > 0
+              ? [`Run budget reached (${capsHit.join(", ")}); coverage may be partial.`]
+              : []),
+            ...content.caveats,
+            ...warnings.map((w) => `[${w.scope}] ${w.message}`),
+          ],
+        })
+      : null;
+
   return (
     // No items-start on the grid: the sidebar item must stretch to the full
     // column height so its sticky nav stays visible while scrolling.
@@ -223,6 +255,7 @@ export default async function BriefPage({
                   {new URL(department.website).hostname.replace(/^www\./, "")}
                 </a>
               )}
+              {copyText && <CopyBriefButton text={copyText} />}
               {content && (
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
