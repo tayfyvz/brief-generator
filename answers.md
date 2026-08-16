@@ -1,5 +1,13 @@
 # Answers
 
+## Results on the three Place IDs
+
+**ChIJpcN7ecgAyIkRrOcWzZx3Yyc** is Wise Avenue Volunteer Fire Co in Dundalk, MD. The run produced 91 cited facts from 20 sources. Best signals: 2024 government grants jumped 44.6% to $151,380, and frontline Engine 271 is a 1996 Spartan/Quality pumper, a prime replacement candidate. The full fleet roster with years and models came through.
+
+**ChIJvfrKDp_Ua4gR5CHnUz3MbvE** is the Lexington Fire Department in Lexington (Scott County), IN. A tiny rural volunteer department with almost no web presence: 6 cited facts after searching 32 sources. The brief says that honestly instead of padding. The one money signal is the township fire fund growing from $34k to $40k. No open bids or fleet news on record.
+
+**ChIJr-yREGP9tEwRr7M-F00PpM8** is the Washington Fire Department in Washington, VT. 32 cited facts from 30 sources. Best signals: an active bid sale of a surplus 1991 International 4800 tanker, a 1995 International/American refurb scheduled for 2025, and firehouse paving underway with state money. The chief and officer roster is current.
+
 ## What's actually useful to an AE on this brief, and what would you cut as noise?
 
 Useful is anything that changes what the AE says on the call. Who to ask for and how to reach them. What apparatus they run and how old it is. Whether money is moving, so budgets, open bids, grants. And a dated reason to call this week instead of next month. That last one is the "why call today" strip at the top of the brief.
