@@ -44,26 +44,34 @@ function useActiveHref(navItems: SidebarNavItem[]): string | null {
   return activeId ? `#${activeId}` : null;
 }
 
+/** Mini-map zoom presets: how much context around the department. */
+const MAP_ZOOMS = { city: 10, state: 6, us: 4 } as const;
+const MAP_ZOOM_LABELS: Record<keyof typeof MAP_ZOOMS, string> = {
+  city: "City",
+  state: "State",
+  us: "US",
+};
+
 /**
  * Desktop sidebar: sticky section nav that highlights the section being
  * read, collapsible to a slim icon rail so the brief can take full width.
+ * Everything is sized to fit the viewport without its own scrollbar.
  */
 export function BriefSidebar({
   navItems,
-  sourceCount,
   pin,
 }: {
   navItems: SidebarNavItem[];
-  sourceCount: number;
   /** Department location for the always-visible regional mini-map. */
   pin?: BriefPin | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mapZoom, setMapZoom] = useState<keyof typeof MAP_ZOOMS>("state");
   const activeHref = useActiveHref(navItems);
 
   return (
     <aside className="hidden lg:block">
-      <div className="sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto">
+      <div className="sticky top-20">
         {collapsed ? (
           <div className="flex flex-col items-center gap-1 rounded-xl border bg-card p-1.5 shadow-sm">
             <button
@@ -157,26 +165,36 @@ export function BriefSidebar({
             )}
             {pin && (
               <div className="overflow-hidden rounded-xl border shadow-sm">
-                {/* Regional zoom on purpose: the AE needs "roughly where",
-                    not streets. */}
                 <BriefsMap
                   interactive={false}
-                  zoom={7}
-                  className="h-44 min-h-0 rounded-none border-0"
+                  zoom={MAP_ZOOMS[mapZoom]}
+                  className="h-40 min-h-0 rounded-none border-0"
                   pins={[pin]}
                 />
-              </div>
-            )}
-            {sourceCount > 0 && (
-              <div className="rounded-xl border bg-card p-3.5 text-xs text-muted-foreground shadow-sm">
-                <p className="flex items-center gap-1.5 font-medium text-foreground">
-                  <FileSearch className="size-3.5 text-primary" />
-                  {sourceCount} sources checked
-                </p>
-                <p className="mt-1.5 leading-relaxed">
-                  Every fact links to its source. Click any citation chip to
-                  see the exact quote and open the page.
-                </p>
+                <div
+                  role="group"
+                  aria-label="Map zoom level"
+                  className="flex divide-x border-t bg-card text-xs"
+                >
+                  {(Object.keys(MAP_ZOOMS) as (keyof typeof MAP_ZOOMS)[]).map(
+                    (level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setMapZoom(level)}
+                        aria-pressed={mapZoom === level}
+                        className={cn(
+                          "flex-1 py-1.5 font-medium transition",
+                          mapZoom === level
+                            ? "bg-accent text-foreground"
+                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                        )}
+                      >
+                        {MAP_ZOOM_LABELS[level]}
+                      </button>
+                    ),
+                  )}
+                </div>
               </div>
             )}
           </div>

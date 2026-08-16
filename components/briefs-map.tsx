@@ -47,6 +47,10 @@ export function BriefsMap({
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<import("leaflet").Map | null>(null);
+  // Read by the init effect without re-creating the map on zoom changes.
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -113,20 +117,27 @@ export function BriefsMap({
       }
 
       if (pins.length === 1) {
-        map.setView([pins[0].lat, pins[0].lng], zoom);
+        map.setView([pins[0].lat, pins[0].lng], zoomRef.current);
       } else {
         map.fitBounds(
           L.latLngBounds(pins.map((p) => [p.lat, p.lng])),
           { padding: [40, 40], maxZoom: 11 },
         );
       }
+      mapRef.current = map;
     });
 
     return () => {
       disposed = true;
+      mapRef.current = null;
       map?.remove();
     };
-  }, [pins, interactive, zoom]);
+  }, [pins, interactive]);
+
+  // Zoom preset changes adjust the live map instead of rebuilding it.
+  useEffect(() => {
+    if (pins.length === 1) mapRef.current?.setZoom(zoom);
+  }, [zoom, pins]);
 
   return (
     <div

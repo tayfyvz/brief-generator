@@ -214,7 +214,6 @@ export default async function BriefPage({
       {resolvedName && <HeaderTitle title={resolvedName} subtitle={location} />}
       <BriefSidebar
         navItems={navItems}
-        sourceCount={sources.length}
         pin={
           department?.lat != null && department?.lng != null
             ? {
