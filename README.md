@@ -70,7 +70,14 @@ tests           Unit and integration tests
 
 ## Deploying
 
-Single Docker image plus managed Postgres. A `fly.toml` is included; any Dockerfile-based host works the same way.
+Deployed on [Railway](https://railway.com): single Docker image plus a managed Postgres service in the same project. `railway.json` holds the service config (Dockerfile build, `/api/health` healthcheck, restart policy). Any Dockerfile-based host works the same way.
+
+1. Create a Railway project from this repo — it picks up `Dockerfile` and `railway.json` automatically.
+2. Add a **Postgres** database service to the project.
+3. On the app service, set `DATABASE_URL` to `${{Postgres.DATABASE_URL}}` (private-network reference), plus any API keys from the table above.
+4. Deploy. Migrations run at boot, so a fresh database needs no manual setup.
+
+Keep the app at **one replica**: research runs execute in-process and stream over SSE from the same instance, so state is not shared across replicas.
 
 ## Results and design notes
 
