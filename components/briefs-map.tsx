@@ -18,9 +18,12 @@ export type BriefPin = {
 };
 
 // A divIcon with an inline SVG sidesteps Leaflet's bundler-hostile default
-// marker PNGs and follows the app theme via CSS variables.
+// marker PNGs. Teardrop with a white outline and a flame glyph: the outline
+// separates the marker from OSM's pale greens/beiges at any fill color.
+const FLAME_PATH =
+  "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z";
 const pinHtml = (fill: string) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="${fill}" stroke="var(--primary-foreground)" stroke-width="1"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3" fill="var(--primary-foreground)" stroke="none"/></svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 40" width="34" height="40"><path d="M17 1.5C9.3 1.5 3 7.8 3 15.5c0 8.6 11.2 20.6 13.2 22.6a1.1 1.1 0 0 0 1.6 0C19.8 36.1 31 24.1 31 15.5 31 7.8 24.7 1.5 17 1.5Z" fill="${fill}" stroke="#fff" stroke-width="2.5"/><g transform="translate(8.6 7) scale(0.7)"><path d="${FLAME_PATH}" fill="#fff"/></g></svg>`;
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -34,10 +37,13 @@ function escapeHtml(s: string) {
 export function BriefsMap({
   pins,
   interactive = true,
+  zoom = 12,
   className,
 }: {
   pins: BriefPin[];
   interactive?: boolean;
+  /** Zoom used when there is a single pin; multi-pin maps fit bounds. */
+  zoom?: number;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -76,9 +82,9 @@ export function BriefsMap({
         L.divIcon({
           className: "brief-pin",
           html: pinHtml(fill),
-          iconSize: [30, 30],
-          iconAnchor: [15, 29],
-          popupAnchor: [0, -26],
+          iconSize: [34, 40],
+          iconAnchor: [17, 38],
+          popupAnchor: [0, -34],
         });
       const brandIcon = makeIcon("var(--primary)");
 
@@ -107,7 +113,7 @@ export function BriefsMap({
       }
 
       if (pins.length === 1) {
-        map.setView([pins[0].lat, pins[0].lng], 12);
+        map.setView([pins[0].lat, pins[0].lng], zoom);
       } else {
         map.fitBounds(
           L.latLngBounds(pins.map((p) => [p.lat, p.lng])),
@@ -120,7 +126,7 @@ export function BriefsMap({
       disposed = true;
       map?.remove();
     };
-  }, [pins, interactive]);
+  }, [pins, interactive, zoom]);
 
   return (
     <div

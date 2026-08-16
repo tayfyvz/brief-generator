@@ -21,7 +21,6 @@ import {
 } from "@/components/brief/brief-sidebar";
 import { BriefPending } from "@/components/brief/brief-pending";
 import { CopyBriefButton } from "@/components/brief/copy-brief-button";
-import { BriefsMap } from "@/components/briefs-map";
 import { briefToMarkdown } from "@/lib/brief-text";
 import { FactSection } from "@/components/brief/fact-section";
 import { FactSearch } from "@/components/brief/fact-search";
@@ -213,7 +212,22 @@ export default async function BriefPage({
     // column height so its sticky nav stays visible while scrolling.
     <main className="w-full flex-1 px-4 py-6 sm:px-6 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-8 lg:px-8">
       {resolvedName && <HeaderTitle title={resolvedName} subtitle={location} />}
-      <BriefSidebar navItems={navItems} sourceCount={sources.length} />
+      <BriefSidebar
+        navItems={navItems}
+        sourceCount={sources.length}
+        pin={
+          department?.lat != null && department?.lng != null
+            ? {
+                placeId,
+                name: department.name,
+                city: department.city,
+                state: department.state,
+                lat: department.lat,
+                lng: department.lng,
+              }
+            : null
+        }
+      />
 
       <div className="min-w-0">
         {/* Department identity: name + address left, contact & stats right.
@@ -270,26 +284,6 @@ export default async function BriefPage({
             </div>
           </div>
         </header>
-
-        {/* Compact location map; static on purpose, the library map explores */}
-        {content && department?.lat != null && department?.lng != null && (
-          <div className="fade-up mt-5">
-            <BriefsMap
-              interactive={false}
-              className="h-36 min-h-0 sm:h-40"
-              pins={[
-                {
-                  placeId,
-                  name: department.name,
-                  city: department.city,
-                  state: department.state,
-                  lat: department.lat,
-                  lng: department.lng,
-                },
-              ]}
-            />
-          </div>
-        )}
 
         {/* Live-run panel (only while a run streams or after a failure) */}
         <ResearchController

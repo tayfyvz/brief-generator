@@ -14,6 +14,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { BriefsMap, type BriefPin } from "@/components/briefs-map";
 import { useScrollSpy } from "@/lib/hooks/use-scroll-spy";
 import { cn } from "@/lib/utils";
 
@@ -50,9 +51,12 @@ function useActiveHref(navItems: SidebarNavItem[]): string | null {
 export function BriefSidebar({
   navItems,
   sourceCount,
+  pin,
 }: {
   navItems: SidebarNavItem[];
   sourceCount: number;
+  /** Department location for the always-visible regional mini-map. */
+  pin?: BriefPin | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const activeHref = useActiveHref(navItems);
@@ -150,6 +154,18 @@ export function BriefSidebar({
                   })}
                 </ul>
               </nav>
+            )}
+            {pin && (
+              <div className="overflow-hidden rounded-xl border shadow-sm">
+                {/* Regional zoom on purpose: the AE needs "roughly where",
+                    not streets. */}
+                <BriefsMap
+                  interactive={false}
+                  zoom={7}
+                  className="h-44 min-h-0 rounded-none border-0"
+                  pins={[pin]}
+                />
+              </div>
             )}
             {sourceCount > 0 && (
               <div className="rounded-xl border bg-card p-3.5 text-xs text-muted-foreground shadow-sm">

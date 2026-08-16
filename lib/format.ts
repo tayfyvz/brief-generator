@@ -41,9 +41,11 @@ export const FRESHNESS_META: Record<
   Freshness,
   { dotClass: string; pinFill: string; label: string }
 > = {
-  fresh: { dotClass: "bg-emerald-500", pinFill: "#10b981", label: "within a week" },
-  aging: { dotClass: "bg-amber-500", pinFill: "#f59e0b", label: "within a month" },
-  stale: { dotClass: "bg-zinc-400", pinFill: "#a1a1aa", label: "older" },
+  // Pin fills are darker than the usual 500-shades so the white-outlined
+  // markers separate from OSM's pale greens and beiges.
+  fresh: { dotClass: "bg-emerald-600", pinFill: "#059669", label: "within a week" },
+  aging: { dotClass: "bg-orange-600", pinFill: "#ea580c", label: "within a month" },
+  stale: { dotClass: "bg-slate-500", pinFill: "#475569", label: "older" },
 };
 
 export const TIER_LABELS: Record<number, string> = {
