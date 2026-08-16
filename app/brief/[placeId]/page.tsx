@@ -5,16 +5,28 @@ import {
   Globe,
   Newspaper,
   Phone,
+  Scale,
   Sparkles,
+  TriangleAlert,
   Truck,
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { FactCard, type FactRow, type SourceRow } from "@/components/brief/fact-card";
-import { getBriefPageData } from "@/lib/db/queries";
+import { FactSection } from "@/components/brief/fact-section";
+import { FactSearch } from "@/components/brief/fact-search";
+import { ResearchController } from "@/components/run/research-controller";
+import type { FactRow, SourceRow } from "@/components/brief/fact-card";
+import {
+  getBriefPageData,
+  getLatestRun,
+  getRunWarnings,
+} from "@/lib/db/queries";
+import { getRunManager } from "@/lib/research/run-manager";
+import { getEnv } from "@/lib/env";
 import { placeIdSchema } from "@/lib/schemas/anchor";
 import { briefContentSchema, type BriefContent } from "@/lib/schemas/brief";
-import { formatDate, relativeDays } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import type { Warning } from "@/lib/schemas/tools";
 
 export const dynamic = "force-dynamic";
 
@@ -47,23 +59,41 @@ export default async function BriefPage({
       <EmptyState title="Invalid Place ID" note="That doesn't look like a Google Place ID." />
     );
   }
-  const data = await getBriefPageData(parsed.data);
+  const placeId = parsed.data;
 
-  if (!data) {
-    return (
-      <EmptyState
-        title="No brief yet"
-        note={`We haven't researched ${parsed.data} yet. Live research arrives in a later build step.`}
-      />
-    );
-  }
+  const data = await getBriefPageData(placeId);
+  const latestRun = await getLatestRun(placeId);
+  const activeRunId = getRunManager().activeRunFor(placeId);
+  const interruptedRunId =
+    !activeRunId && latestRun?.status === "interrupted" ? latestRun.id : null;
+  const maxRounds = getEnv().MAX_ROUNDS;
 
-  const { department, brief, facts, sources } = data;
-  const sourceById = new Map<string, SourceRow>(sources.map((s) => [s.id, s]));
-  const factById = new Map<string, FactRow>(facts.map((f) => [f.id, f]));
+  const department = data?.department ?? null;
+  const brief = data?.brief ?? null;
+  const facts = data?.facts ?? [];
+  const sources = data?.sources ?? [];
   const content: BriefContent | null = brief
     ? briefContentSchema.parse(brief.content)
     : null;
+  const warnings: Warning[] = brief ? await getRunWarnings(brief.runId) : [];
+  const capsHit =
+    brief && latestRun?.id === brief.runId ? (latestRun.capsHit ?? []) : [];
+
+  const sourceById: Record<string, SourceRow> = Object.fromEntries(
+    sources.map((s) => [s.id, s]),
+  );
+  const factById = new Map<string, FactRow>(facts.map((f) => [f.id, f]));
+
+  const controller = (
+    <ResearchController
+      placeId={placeId}
+      hasBrief={Boolean(brief)}
+      researchedAt={brief ? brief.createdAt.toISOString() : null}
+      activeRunId={activeRunId}
+      interruptedRunId={interruptedRunId}
+      maxRounds={maxRounds}
+    />
+  );
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
@@ -74,14 +104,16 @@ export default async function BriefPage({
         <ArrowLeft className="size-3.5" /> All briefs
       </Link>
 
-      {/* Header */}
-      <header className="border-b pb-6">
+      {/* Header (instant) */}
+      <header className="border-b pb-5">
         <h1 className="text-2xl font-semibold tracking-tight">
-          {department.name}
+          {department && department.name !== "(resolving…)"
+            ? department.name
+            : "Researching department…"}
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          {department.address && <span>{department.address}</span>}
-          {department.phone && (
+          {department?.address && <span>{department.address}</span>}
+          {department?.phone && (
             <a
               href={`tel:${department.phone}`}
               className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
@@ -89,7 +121,7 @@ export default async function BriefPage({
               <Phone className="size-3.5" /> {department.phone}
             </a>
           )}
-          {department.website && (
+          {department?.website && (
             <a
               href={department.website}
               target="_blank"
@@ -100,29 +132,37 @@ export default async function BriefPage({
               {new URL(department.website).hostname}
             </a>
           )}
+          {!department && <span className="font-mono text-xs">{placeId}</span>}
         </div>
-        {brief && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Researched {relativeDays(brief.createdAt)}
-          </p>
-        )}
+        {controller}
       </header>
 
-      {!content ? (
-        <p className="mt-8 text-muted-foreground">
-          Department is known but has no brief yet.
-        </p>
-      ) : (
+      {content ? (
         <>
+          {/* Sticky in-page nav */}
+          <nav className="sticky top-0 z-10 -mx-6 mb-2 flex gap-1 overflow-x-auto border-b bg-background/90 px-6 py-2 text-sm backdrop-blur">
+            {[{ key: "why", title: "Why call" }, ...SECTIONS].map((s) => (
+              <a
+                key={s.key}
+                href={`#${s.key}`}
+                className="whitespace-nowrap rounded-full px-3 py-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                {s.title}
+              </a>
+            ))}
+          </nav>
+
           {content.summary && (
-            <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               {content.summary}
             </p>
           )}
 
+          <FactSearch placeId={placeId} />
+
           {/* Why call today */}
           {content.whyCallToday.length > 0 && (
-            <section className="mt-8">
+            <section id="why" className="mt-8 scroll-mt-14">
               <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 <Sparkles className="size-4" /> Why call today
               </h2>
@@ -149,6 +189,29 @@ export default async function BriefPage({
             </section>
           )}
 
+          {/* Conflicts — surfaced, never silently resolved */}
+          {content.conflicts.length > 0 && (
+            <section className="mt-8 rounded-lg border border-red-500/30 bg-red-500/5 p-4">
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400">
+                <Scale className="size-4" /> Conflicting information
+              </h2>
+              <ul className="space-y-3 text-sm">
+                {content.conflicts.map((c, i) => (
+                  <li key={i}>
+                    <p className="font-medium">{c.topic}</p>
+                    <p className="text-muted-foreground">{c.note}</p>
+                    <ul className="mt-1 list-disc pl-5 text-xs text-muted-foreground">
+                      {c.factIds.map((id) => {
+                        const f = factById.get(id);
+                        return f ? <li key={id}>{f.claim}</li> : null;
+                      })}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* Four sections */}
           {SECTIONS.map((section) => {
             const curated = (content.curatedFactIds[section.key] ?? [])
@@ -159,24 +222,15 @@ export default async function BriefPage({
               (f) =>
                 section.categories.includes(f.category) && !curatedIds.has(f.id),
             );
-            const all = [...curated, ...rest];
-            if (all.length === 0) return null;
+            if (curated.length + rest.length === 0) return null;
             const Icon = section.icon;
             return (
-              <section key={section.key} className="mt-8">
+              <section key={section.key} id={section.key} className="mt-8 scroll-mt-14">
                 <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   <Icon className="size-4" /> {section.title}
-                  <Badge variant="secondary">{all.length}</Badge>
+                  <Badge variant="secondary">{curated.length + rest.length}</Badge>
                 </h2>
-                <div className="grid gap-3">
-                  {all.map((fact) => (
-                    <FactCard
-                      key={fact.id}
-                      fact={fact}
-                      source={sourceById.get(fact.sourceId)}
-                    />
-                  ))}
-                </div>
+                <FactSection curated={curated} rest={rest} sources={sourceById} />
               </section>
             );
           })}
@@ -187,34 +241,41 @@ export default async function BriefPage({
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Also found
               </h2>
-              <div className="grid gap-3">
-                {facts
-                  .filter((f) => f.category === "other")
-                  .map((fact) => (
-                    <FactCard
-                      key={fact.id}
-                      fact={fact}
-                      source={sourceById.get(fact.sourceId)}
-                    />
-                  ))}
-              </div>
+              <FactSection
+                curated={[]}
+                rest={facts.filter((f) => f.category === "other")}
+                sources={sourceById}
+              />
             </section>
           )}
 
-          {/* Caveats */}
-          {content.caveats.length > 0 && (
+          {/* Honest research notes: caveats, caps, degraded tracks */}
+          {(content.caveats.length > 0 || warnings.length > 0 || capsHit.length > 0) && (
             <section className="mt-8 rounded-lg border border-dashed p-4">
-              <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
-                Caveats
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                <TriangleAlert className="size-4" /> Research notes
               </h2>
               <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                {capsHit.length > 0 && (
+                  <li>Run budget reached ({capsHit.join(", ")}) — coverage may be partial.</li>
+                )}
                 {content.caveats.map((c, i) => (
-                  <li key={i}>{c}</li>
+                  <li key={`caveat-${i}`}>{c}</li>
+                ))}
+                {warnings.map((w, i) => (
+                  <li key={`warning-${i}`}>
+                    <span className="font-mono text-xs">[{w.scope}]</span> {w.message}
+                  </li>
                 ))}
               </ul>
             </section>
           )}
         </>
+      ) : (
+        <p className="mt-8 text-sm text-muted-foreground">
+          No brief yet — research starts automatically and results will appear
+          here the moment it finishes.
+        </p>
       )}
     </main>
   );

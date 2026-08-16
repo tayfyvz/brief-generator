@@ -1,0 +1,127 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { Search, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+interface SearchResult {
+  id: string;
+  category: string;
+  claim: string;
+  quote: string;
+}
+
+/** Render ⟦…⟧ highlight markers from ts_headline as <mark> — no raw HTML. */
+function Highlighted({ text }: { text: string }) {
+  const parts = text.split(/⟦|⟧/);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <mark key={i} className="rounded-sm bg-amber-100 px-0.5 dark:bg-amber-500/25 dark:text-inherit">
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+/** Fact quick-find (press "/" to focus): FTS over claim/quote/tags. */
+export function FactSearch({ placeId }: { placeId: string }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[] | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (
+        e.key === "/" &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setResults(null);
+      return;
+    }
+    const controller = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/brief/${placeId}/search?q=${encodeURIComponent(query)}`,
+          { signal: controller.signal },
+        );
+        if (res.ok) {
+          const data = (await res.json()) as { results: SearchResult[] };
+          setResults(data.results);
+        }
+      } catch {
+        // aborted or offline — keep previous results
+      }
+    }, 250);
+    return () => {
+      controller.abort();
+      clearTimeout(t);
+    };
+  }, [query, placeId]);
+
+  return (
+    <div className="mt-6">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder='Search the findings — try "tiller" or "grant" (press / to focus)'
+          className="h-10 w-full rounded-md border bg-background pl-9 pr-9 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-ring"
+          aria-label="Search facts"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+      {results && (
+        <div className="mt-2 rounded-md border bg-card">
+          {results.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-muted-foreground">
+              No findings match “{query}”.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {results.map((r) => (
+                <li key={r.id} className="px-4 py-3 text-sm">
+                  <Badge variant="secondary" className="mr-2 align-middle">
+                    {r.category}
+                  </Badge>
+                  <Highlighted text={r.claim} />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    “<Highlighted text={r.quote} />”
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

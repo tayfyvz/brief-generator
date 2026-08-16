@@ -1,7 +1,8 @@
-import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, or } from "drizzle-orm";
 import { getDb } from "./client";
-import { briefs, departments, facts, sources } from "./schema";
+import { briefs, departments, facts, researchRuns, runEvents, sources } from "./schema";
 import type { Anchor } from "@/lib/schemas/anchor";
+import type { Warning } from "@/lib/schemas/tools";
 
 export async function upsertDepartment(anchor: Anchor) {
   const db = getDb();
@@ -48,6 +49,27 @@ export async function getDepartment(placeId: string) {
     .where(eq(departments.placeId, placeId))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/** Most recent run for a department (freshness, resume, caps). */
+export async function getLatestRun(placeId: string) {
+  const rows = await getDb()
+    .select()
+    .from(researchRuns)
+    .where(eq(researchRuns.placeId, placeId))
+    .orderBy(desc(researchRuns.startedAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Warnings persisted during a run — rendered as honest research notes. */
+export async function getRunWarnings(runId: string): Promise<Warning[]> {
+  const rows = await getDb()
+    .select({ payload: runEvents.payload })
+    .from(runEvents)
+    .where(and(eq(runEvents.runId, runId), eq(runEvents.type, "warning")))
+    .orderBy(asc(runEvents.seq));
+  return rows.map((r) => (r.payload as { warning: Warning }).warning);
 }
 
 /** Everything the cached brief page needs, in one round-trip-per-table shot. */
