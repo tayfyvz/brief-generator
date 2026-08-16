@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, ExternalLink, Quote, Star } from "lucide-react";
+import { CalendarDays, ChevronDown, ExternalLink, Quote, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -111,6 +111,33 @@ export function CitationChip({
   );
 }
 
+/** Pipeline bookkeeping attributes; never shown to the AE. */
+const INTERNAL_ATTRIBUTES = new Set(["carriedFromRun"]);
+
+/**
+ * Structured extras stored on the fact row (jsonb), flattened to printable
+ * label/value pairs; nested objects are dropped rather than dumped as JSON.
+ */
+function attributeEntries(attributes: unknown): [string, string][] {
+  if (!attributes || typeof attributes !== "object" || Array.isArray(attributes))
+    return [];
+  return Object.entries(attributes as Record<string, unknown>).flatMap(
+    ([key, value]) => {
+      if (INTERNAL_ATTRIBUTES.has(key)) return [];
+      const text = Array.isArray(value)
+        ? value
+            .filter((v) => v != null && typeof v !== "object")
+            .map(String)
+            .join(", ")
+        : value == null || typeof value === "object"
+          ? ""
+          : String(value);
+      if (!text) return [];
+      return [[key.replace(/[_-]+/g, " "), text] as [string, string]];
+    },
+  );
+}
+
 export function FactCard({
   fact,
   source,
@@ -118,10 +145,12 @@ export function FactCard({
   fact: FactRow;
   source: SourceRow | undefined;
 }) {
+  const [open, setOpen] = useState(false);
   const keyFact = fact.usefulness === "high";
   const confidence = fact.confidence
     ? CONFIDENCE_STYLE[fact.confidence]
     : undefined;
+  const details = attributeEntries(fact.attributes);
 
   return (
     <div
@@ -131,7 +160,13 @@ export function FactCard({
         keyFact && "border-primary/25 bg-primary/[0.03]",
       )}
     >
-      <div className="flex items-start gap-2">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        title={open ? "Hide details" : "Show details"}
+        className="flex w-full items-start gap-2 text-left"
+      >
         {keyFact && (
           <span
             className="mt-1 shrink-0 text-primary"
@@ -141,7 +176,53 @@ export function FactCard({
           </span>
         )}
         <p className="text-sm leading-relaxed">{fact.claim}</p>
-      </div>
+        <ChevronDown
+          className={cn(
+            "ml-auto mt-0.5 size-4 shrink-0 text-muted-foreground/60 transition-transform",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3 border-t pt-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Source says
+            </p>
+            <ExpandableQuote quote={fact.quote} />
+          </div>
+          {details.length > 0 && (
+            <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+              {details.map(([label, value]) => (
+                <div key={label} className="flex gap-2">
+                  <dt className="capitalize text-muted-foreground">{label}:</dt>
+                  <dd className="min-w-0 break-words font-medium">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {source && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-muted-foreground">
+              <span className="min-w-0 truncate">
+                {source.title ?? displayHost(source.url)}
+              </span>
+              {source.fetchedAt && (
+                <span className="shrink-0">
+                  · snapshot {formatDate(source.fetchedAt.toISOString())}
+                </span>
+              )}
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="chip-hover ml-auto inline-flex items-center gap-1 rounded-md border px-2 py-1 font-medium text-foreground"
+              >
+                Open source <ExternalLink className="size-3" />
+              </a>
+            </div>
+          )}
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-muted-foreground">
         {confidence && (
           <span className="inline-flex items-center gap-1.5" title={confidence.label}>

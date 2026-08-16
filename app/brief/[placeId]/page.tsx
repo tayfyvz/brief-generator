@@ -24,6 +24,7 @@ import { CopyBriefButton } from "@/components/brief/copy-brief-button";
 import { briefToMarkdown } from "@/lib/brief-text";
 import { FactSection } from "@/components/brief/fact-section";
 import { FactSearch } from "@/components/brief/fact-search";
+import { WhyCallToday, type SignalItem } from "@/components/brief/why-call-today";
 import { HeaderTitle } from "@/components/brief/header-title";
 import { ResearchController } from "@/components/run/research-controller";
 import type { FactRow, SourceRow } from "@/components/brief/fact-card";
@@ -44,7 +45,7 @@ import {
   type BriefContent,
   type BriefSectionKey,
 } from "@/lib/schemas/brief";
-import { displayHost, formatDate } from "@/lib/format";
+import { displayHost, humanizeWarningScope } from "@/lib/format";
 import type { Warning } from "@/lib/schemas/tools";
 
 export const dynamic = "force-dynamic";
@@ -152,6 +153,20 @@ export default async function BriefPage({
     return { ...section, curated, rest, count: curated.length + rest.length };
   });
   const otherFacts = facts.filter((f) => f.category === "other");
+
+  // Signals carry the fact IDs they cite; resolve them to rendered facts so
+  // the UI can offer "jump to the related bullet" links.
+  const signals: SignalItem[] = (content?.whyCallToday ?? []).map((signal) => ({
+    headline: signal.headline,
+    detail: signal.detail,
+    date: signal.date,
+    related: signal.factIds
+      .map((id) => factById.get(id))
+      .filter((f): f is FactRow => Boolean(f))
+      .slice(0, 3)
+      .map((f) => ({ id: f.id, label: f.claim })),
+  }));
+
   const hasNotes =
     (content?.caveats.length ?? 0) > 0 || warnings.length > 0 || capsHit.length > 0;
 
@@ -205,7 +220,7 @@ export default async function BriefPage({
               ? [`Run budget reached (${capsHit.join(", ")}); coverage may be partial.`]
               : []),
             ...content.caveats,
-            ...warnings.map((w) => `[${w.scope}] ${w.message}`),
+            ...warnings.map((w) => `${humanizeWarningScope(w.scope)}: ${w.message}`),
           ],
         })
       : null;
@@ -306,47 +321,52 @@ export default async function BriefPage({
 
             {/* Summary spans the full content column so it reflows when the
                 sidebar collapses instead of sitting in a fixed-width block */}
-            {content.summary && (
+            {(content.summary || facts.length > 0) && (
               <div className="fade-up mt-5 rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-3.5">
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">
                   At a glance
                 </p>
-                <p className="text-[15px] leading-relaxed lg:text-base">
-                  {content.summary}
-                </p>
+                {content.summary && (
+                  <p className="text-[15px] leading-relaxed lg:text-base">
+                    {content.summary}
+                  </p>
+                )}
+                {/* What the brief holds, at a scan; each chip jumps to its section */}
+                {facts.length > 0 && (
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {sectionData
+                      .filter((s) => s.count > 0)
+                      .map((s) => (
+                        <a
+                          key={s.key}
+                          href={`#${s.key}`}
+                          className="chip-hover inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                        >
+                          <s.icon className="size-3 text-primary" />
+                          {s.title}
+                          <span className="tabular-nums">{s.count}</span>
+                        </a>
+                      ))}
+                    {otherFacts.length > 0 && (
+                      <a
+                        href="#other"
+                        className="chip-hover inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        <Archive className="size-3 text-primary" />
+                        Also found
+                        <span className="tabular-nums">{otherFacts.length}</span>
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
             {/* Why call today */}
-            {content.whyCallToday.length > 0 && (
+            {signals.length > 0 && (
               <section id="why" className="section-anchor mt-8">
                 <SectionHeading icon={Sparkles} title="Why call today" />
-                <ol className="grid gap-3 xl:grid-cols-3">
-                  {content.whyCallToday.map((signal, i) => (
-                    <li
-                      key={i}
-                      className="fade-up flex gap-4 rounded-xl border-l-4 border-primary bg-card p-4 shadow-sm"
-                      style={{ animationDelay: `${i * 70}ms` }}
-                    >
-                      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold tabular-nums text-primary-foreground">
-                        {i + 1}
-                      </span>
-                      <div>
-                        <p className="font-medium leading-snug">{signal.headline}</p>
-                        {signal.detail && (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {signal.detail}
-                          </p>
-                        )}
-                        {signal.date && (
-                          <p className="mt-1.5 text-xs font-medium text-primary/80">
-                            {formatDate(signal.date)}
-                          </p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                <WhyCallToday signals={signals} />
               </section>
             )}
 
@@ -435,7 +455,7 @@ export default async function BriefPage({
                   ))}
                   {warnings.map((w, i) => (
                     <li key={`warning-${i}`}>
-                      <span className="font-mono text-xs">[{w.scope}]</span> {w.message}
+                      {humanizeWarningScope(w.scope)}: {w.message}
                     </li>
                   ))}
                 </ul>

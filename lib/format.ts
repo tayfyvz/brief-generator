@@ -1,5 +1,27 @@
 /** Small shared formatting helpers for the brief UI. */
 
+import { TRACKS } from "./graph/tracks";
+
+const TRACK_TITLES: Record<string, string> = Object.fromEntries(
+  TRACKS.map((t) => [t.key, t.title]),
+);
+
+const SCOPE_LABELS: Record<string, string> = {
+  verify: "Fact verification",
+  expansion: "Follow-up research",
+  entity: "Department matching",
+};
+
+/**
+ * Turns an internal pipeline scope ("track:fleet:budget") into an AE-facing
+ * label ("Fleet & apparatus"); the AE should never see raw scope tags.
+ */
+export function humanizeWarningScope(scope: string): string {
+  const [head, key] = scope.split(":");
+  if (head === "track") return TRACK_TITLES[key] ?? "Research";
+  return SCOPE_LABELS[head] ?? "Research";
+}
+
 export function relativeDays(date: Date | string): string {
   const then = typeof date === "string" ? new Date(date) : date;
   const days = Math.floor((Date.now() - then.getTime()) / 86_400_000);

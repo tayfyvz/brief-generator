@@ -25,6 +25,9 @@ export const SYNTHESIZE_SYSTEM =
   "Never pad a section with facts from another category; an empty section is honest and correct, " +
   "and the gap belongs in caveats instead. Rank by usefulness, and use each fact ID in at most " +
   "one section. " +
-  "Summary: at most 2 short sentences of orientation (who they are, the one thing that matters now). " +
+  "Summary ('At a glance'): 2 to 4 short sentences that let the AE grasp the whole brief without " +
+  "reading further: who the department is, the one thing that matters now, and what kind of " +
+  "information the brief holds (fleet makeup and age, named contacts, money activity, recent news) " +
+  "including any notable gap. Describe coverage; do not restate signal headlines. " +
   "Caveats: one short line each, only for gaps that change how the AE approaches the call. " +
   "Never use em dashes or en dashes anywhere in the brief.";
