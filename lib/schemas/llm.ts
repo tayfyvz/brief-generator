@@ -49,6 +49,11 @@ export const extractedFactSchema = z.object({
   category: factCategorySchema,
   tags: z.array(z.string()),
   claim: z.string(),
+  /**
+   * 1-2 short sentences of ADDITIONAL data from the same page that did not
+   * fit the claim; null when the page offers nothing beyond the claim.
+   */
+  detail: z.string().nullable(),
   /** VERBATIM substring of the page; validated, fact dropped if absent. */
   quote: z.string(),
   /** ISO date (yyyy-mm-dd) the fact is current as of, if stated. */

@@ -12,6 +12,7 @@ export interface StoredFact {
   category: FactCategory;
   tags: string[];
   claim: string;
+  detail: string | null;
   quote: string;
   asOfDate: string | null;
   tier: number;

@@ -53,6 +53,7 @@ async function main() {
       category: f.category as StoredFact["category"],
       tags: f.tags,
       claim: f.claim,
+      detail: f.detail,
       quote: f.quote,
       asOfDate: f.asOfDate,
       tier: tier ?? 3,

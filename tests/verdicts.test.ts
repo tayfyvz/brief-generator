@@ -10,6 +10,7 @@ function fact(id: string, overrides: Partial<StoredFact> = {}): StoredFact {
     category: "fleet",
     tags: [],
     claim: `claim ${id}`,
+    detail: null,
     quote: `quote ${id}`,
     asOfDate: null,
     tier: 1,

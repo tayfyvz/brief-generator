@@ -104,6 +104,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       category: "leadership",
       tags: ["chief"],
       claim: "The Chief of Department is David Donnarumma.",
+      detail: null,
       quote: "Chief of Department: David Donnarumma.",
       asOfDate: null,
       confidence: "high",
@@ -114,6 +115,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["board", "budget-authority"],
       claim:
         "Weehawken Mayor Richard Turner chairs the NHRFR Management Committee.",
+      detail: null,
       quote:
         "Weehawken Mayor Richard Turner serves as Chairman of the NHRFR Management Committee.",
       asOfDate: null,
@@ -125,6 +127,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["administration"],
       claim:
         "Co-Executive Directors Michael DeOrio and Jeff Welz oversee executive administration.",
+      detail: null,
       quote:
         "Executive administration is overseen by Co-Executive Directors Michael DeOrio and Jeff Welz.",
       asOfDate: null,
@@ -136,6 +139,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["contact", "phone"],
       claim:
         "Administrative HQ (Reports & Records) is reachable at (201) 601-3542, 11 Port Imperial Blvd, West New York, NJ.",
+      detail: null,
       quote:
         "Administrative HQ (Reports & Records): (201) 601-3542; 11 Port Imperial Blvd,",
       asOfDate: null,
@@ -147,6 +151,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["governance", "regional"],
       claim:
         "NHRFR is a consolidated regional department serving Weehawken, Union City, West New York, North Bergen and Guttenberg.",
+      detail: null,
       quote:
         "NHRFR serves Weehawken, Union City, West New York, North Bergen and Guttenberg,",
       asOfDate: null,
@@ -160,6 +165,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["tiller", "pierce"],
       claim:
         "Ladder 4 is a 2018 Pierce Arrow XT 100' tiller (job #31983), delivered November 2018.",
+      detail: null,
       quote:
         "Delivered November 2018: Pierce Arrow XT 100' tiller (job #31983), Detroit DD13",
       asOfDate: "2018-11-15",
@@ -171,6 +177,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["pumper", "pierce", "frontline"],
       claim:
         "Engine 5 in Weehawken runs a 2015 Pierce Saber custom pumper with a 1,500 GPM Waterous pump.",
+      detail: null,
       quote:
         "In service since 2015: Pierce Saber custom pumper; 1,500 GPM Waterous pump,",
       asOfDate: null,
@@ -182,6 +189,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["dealer"],
       claim:
         "Fire & Safety Services, Ltd. is the exclusive Pierce dealer for New Jersey.",
+      detail: null,
       quote:
         "Fire & Safety Services, Ltd. is the exclusive Pierce Manufacturing dealer for New Jersey.",
       asOfDate: null,
@@ -195,6 +203,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["aerial", "ferrara", "delivery"],
       claim:
         "Ladder 5 is a 2024 Ferrara Inferno 102' rear-mount aerial placed in service in 2024.",
+      detail: null,
       quote:
         "NHRFR placed the 2024 Ferrara Inferno 102' rear-mount aerial in service as Ladder 5,",
       asOfDate: "2024-06-01",
@@ -206,6 +215,8 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["replacement-cycle", "tiller", "opportunity"],
       claim:
         "Ladder 1's 2008 Pierce Arrow XT 100-foot tiller is scheduled for evaluation and potential replacement.",
+      detail:
+        "The tiller entered service in 2008 and the delivery page lists it alongside the 2024 Ferrara Inferno replacement program.",
       quote: "are scheduled for evaluation and potential replacement",
       asOfDate: "2024-06-01",
       confidence: "medium",
@@ -216,6 +227,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["dealer"],
       claim:
         "Firefighter One, LLC represents Ferrara Fire Apparatus and the REV Group in the region.",
+      detail: null,
       quote:
         "Firefighter One, LLC represents Ferrara Fire Apparatus and the REV Group in the region.",
       asOfDate: null,
@@ -229,6 +241,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["federal", "cds", "facilities"],
       claim:
         "NHRFR has a $1,410,000 Congressionally Directed Spending request for its Firehouse Modernization and Safety Upgrades Project.",
+      detail: null,
       quote: "Upgrades Project; $1,410,000. Sponsored with Rep. Rob Menendez under the",
       asOfDate: "2025-05-20",
       confidence: "high",
@@ -241,6 +254,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["chief", "appointment"],
       claim:
         "David Donnarumma, a 30-year veteran, was sworn in as Chief of Department in September 2022.",
+      detail: null,
       quote:
         "David Donnarumma, a 30-year veteran of the regional fire service, was sworn in as",
       asOfDate: "2022-09-14",
@@ -252,6 +266,7 @@ export const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["leadership-change"],
       claim:
         "Donnarumma took over following Acting Chief Michael Falco and retired Chief Frank Montagne.",
+      detail: null,
       quote:
         "of Acting Chief Michael Falco and retired Chief Frank Montagne.",
       asOfDate: "2022-09-14",

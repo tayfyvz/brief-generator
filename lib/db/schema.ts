@@ -117,6 +117,8 @@ export const facts = pgTable(
     category: text("category").notNull(),
     tags: text("tags").array().notNull().default([]),
     claim: text("claim").notNull(),
+    /** Optional supporting context from the same page; shown when the AE expands the bullet. */
+    detail: text("detail"),
     quote: text("quote").notNull(),
     asOfDate: date("as_of_date"),
     discoveredRound: smallint("discovered_round"),

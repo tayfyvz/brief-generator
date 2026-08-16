@@ -32,6 +32,7 @@ export async function synthesize(
     id: f.id,
     category: f.category,
     claim: f.claim,
+    detail: f.detail,
     asOfDate: f.asOfDate,
     tags: f.tags,
     usefulness: f.usefulness,
@@ -62,10 +63,10 @@ export async function synthesize(
               system: SYNTHESIZE_SYSTEM,
               prompt: [
                 anchorPacket(state.anchor!, state.entityGraph),
-                "## Verified facts (id · category · usefulness · claim · as-of)",
+                "## Verified facts (id · category · usefulness · claim · as-of · supporting detail)",
                 ...factList.map(
                   (f) =>
-                    `- ${aliasOf.get(f.id)} · ${f.category} · ${f.usefulness ?? "medium"} · ${f.claim}${f.asOfDate ? ` (as of ${f.asOfDate})` : ""}`,
+                    `- ${aliasOf.get(f.id)} · ${f.category} · ${f.usefulness ?? "medium"} · ${f.claim}${f.asOfDate ? ` (as of ${f.asOfDate})` : ""}${f.detail ? ` · detail: ${f.detail}` : ""}`,
                 ),
                 "",
                 "Produce the brief: summary, top-3 'why call today' signals, curated fact ids per section, conflicts, honest caveats.",

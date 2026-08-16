@@ -64,6 +64,8 @@ export const factSchema = z.object({
   category: factCategorySchema,
   tags: z.array(z.string()),
   claim: z.string().min(1),
+  /** Extra data from the same page that did not fit the claim; null when the page offered none. */
+  detail: z.string().nullable(),
   quote: z.string().min(1),
   asOfDate: z.string().nullable(), // ISO date (yyyy-mm-dd)
   discoveredRound: z.number().int().nullable(),

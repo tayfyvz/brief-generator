@@ -185,6 +185,7 @@ export function FactCard({
       </button>
       {open && (
         <div className="mt-3 space-y-3 border-t pt-3">
+          {fact.detail && <p className="text-sm leading-relaxed">{fact.detail}</p>}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Source says
