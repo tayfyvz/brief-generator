@@ -53,7 +53,7 @@ export const sourceSchema = z.object({
 export type Source = z.infer<typeof sourceSchema>;
 
 /**
- * A single cited fact. `sourceId` + verbatim `quote` are mandatory ; 
+ * A single cited fact. `sourceId` + verbatim `quote` are mandatory;
  * uncited facts never exist as data.
  */
 export const factSchema = z.object({

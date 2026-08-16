@@ -124,7 +124,7 @@ export const facts = pgTable(
     usefulness: text("usefulness"),
     stale: boolean("stale").notNull().default(false),
     searchVec: tsvector("search_vec").generatedAlwaysAs(
-      // immutable_array_to_string is created in the initial migration ; 
+      // immutable_array_to_string is created in the initial migration;
       // array_to_string() is only STABLE, which generated columns reject.
       sql`to_tsvector('english', coalesce(claim, '') || ' ' || coalesce(quote, '') || ' ' || immutable_array_to_string(tags))`,
     ),

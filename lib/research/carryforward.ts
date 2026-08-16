@@ -14,15 +14,11 @@ export interface CarriedFacts {
 const NOTHING: CarriedFacts = { facts: [], urls: [], fromRunId: null };
 
 /**
- * Copy the previous run's kept facts into a new run so coverage is
- * monotonic across reruns: the LLM query planner is nondeterministic, and
- * without this a rerun can silently lose a fact the AE saw yesterday
- * (observed: one run found a $658k ARPA appropriation, the next did not).
- *
- * Copies point at the ORIGINAL source rows (source snapshots are immutable
- * and keep their quotes verifiable) and re-enter this run's verify pass
- * unverified, so fresh findings still dedupe, conflict with, and supersede
- * them; staleness flags and dated-beats-undated rules age them out.
+ * Copy the previous run's kept facts into a new run so coverage only grows
+ * across reruns; the nondeterministic query planner would otherwise silently
+ * lose facts the AE already saw. Copies point at the ORIGINAL source rows
+ * (snapshots are immutable, quotes stay verifiable) and re-enter this run's
+ * verify pass unverified, so fresh findings still dedupe and supersede them.
  */
 export async function carryForwardFacts(
   runId: string,

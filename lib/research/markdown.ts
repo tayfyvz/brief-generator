@@ -3,10 +3,8 @@ import type { Anchor } from "@/lib/schemas/anchor";
 /**
  * Page-markdown hygiene, applied once at fetch time so stored content,
  * extraction prompts, and verbatim-quote checks all see the same text.
- * Inline images, <br> tags, and dot leaders on scanned forms are exactly
- * what breaks contiguous label+value quotes (observed: every IRS-990
- * financial fact in a run rejected because the model could only quote the
- * form label, never the amount three <br>s and an image away).
+ * Inline images, <br> tags, and dot leaders are what break contiguous
+ * label+value quotes on form and table pages.
  */
 export function cleanMarkdown(md: string): string {
   return md
@@ -56,10 +54,9 @@ export function anchorTerms(anchor: Anchor): string[] {
 }
 
 /**
- * What the extractor gets to read. Whole page when it fits; for very long
- * pages (statewide news rolls, county budget books) the head plus every
- * later line that mentions the department, with context. A hard slice(0, N)
- * here once cost a dated apparatus update sitting at char 48k of a 95k page.
+ * What the extractor gets to read: the whole page when it fits; for very
+ * long pages, the head plus every later line that mentions the department
+ * (a hard slice would lose facts buried deep in budget books).
  */
 export function extractionSlice(markdown: string, terms: string[]): string {
   if (markdown.length <= HEAD_CHARS) return markdown;

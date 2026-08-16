@@ -8,10 +8,8 @@ const normalize = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 
 /**
  * Markdown-agnostic form: every non-alphanumeric run becomes one space.
- * Models copying "quotes" out of tables and links drop the pipes, brackets,
- * and asterisks; a punctuation-sensitive check threw away 22 roster facts in
- * one observed run. Token order still must match, so this stays verbatim in
- * spirit: the words must appear contiguously on the page.
+ * Models copying quotes out of tables drop the pipes and asterisks; token
+ * order must still match, so quotes stay verbatim in spirit.
  */
 const tokenize = (s: string) =>
   s
@@ -21,7 +19,7 @@ const tokenize = (s: string) =>
 
 /**
  * Models return partial dates ("2025", "2024-06") despite the schema asking
- * for yyyy-mm-dd. Normalize to a full ISO date (missing parts → 01) or null ; 
+ * for yyyy-mm-dd. Normalize to a full ISO date (missing parts → 01) or null;
  * a bad date must never fail the insert and lose the fact.
  */
 export function normalizeAsOfDate(input: string | null | undefined): string | null {
@@ -95,12 +93,9 @@ export function releaseRunQuotes(runId: string): void {
 
 /**
  * Persist extracted facts for one source page. Quotes must appear verbatim
- * in the snapshot or the fact is dropped. Tier-4 (community/enthusiast)
- * sources ARE citable: for tiny volunteer departments they are often the only
- * place the apparatus roster exists, and an honestly-labeled community fact
- * beats an empty section. Their facts are stored at low confidence, rendered
- * with an "unconfirmed" badge, and replaced by higher-tier facts whenever the
- * verifier finds the same datum from a better source.
+ * in the snapshot or the fact is dropped. Tier-4 (community) sources ARE
+ * citable: stored at low confidence, rendered with an "unconfirmed" badge,
+ * and superseded when the verifier finds the same datum in a better source.
  */
 export async function storeExtractedFacts(opts: {
   runId: string;
