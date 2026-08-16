@@ -3,6 +3,12 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { FRESHNESS_META, type Freshness } from "@/lib/format";
+import type { GeoBounds } from "@/lib/us-geo";
+
+/** What the map frames: the pin at a zoom level, or a fixed region. */
+export type MapView =
+  | { kind: "center"; zoom: number }
+  | { kind: "bounds"; bounds: GeoBounds };
 
 export type BriefPin = {
   placeId: string;
@@ -34,23 +40,43 @@ function escapeHtml(s: string) {
  * links each pin's popup to its brief page; non-interactive is a fixed
  * "static" map for showing a single department's location.
  */
+function applyView(
+  L: typeof import("leaflet"),
+  map: import("leaflet").Map,
+  view: MapView | undefined,
+  pins: BriefPin[],
+) {
+  if (view?.kind === "bounds") {
+    map.fitBounds(L.latLngBounds(view.bounds), { padding: [10, 10] });
+  } else if (view?.kind === "center") {
+    map.setView([pins[0].lat, pins[0].lng], view.zoom);
+  } else if (pins.length === 1) {
+    map.setView([pins[0].lat, pins[0].lng], 12);
+  } else {
+    map.fitBounds(
+      L.latLngBounds(pins.map((p) => [p.lat, p.lng])),
+      { padding: [40, 40], maxZoom: 11 },
+    );
+  }
+}
+
 export function BriefsMap({
   pins,
   interactive = true,
-  zoom = 12,
+  view,
   className,
 }: {
   pins: BriefPin[];
   interactive?: boolean;
-  /** Zoom used when there is a single pin; multi-pin maps fit bounds. */
-  zoom?: number;
+  /** Initial frame; defaults to fitting the pins. Changes move the live map. */
+  view?: MapView;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
-  // Read by the init effect without re-creating the map on zoom changes.
-  const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
+  // Read by the init effect without re-creating the map on view changes.
+  const viewRef = useRef(view);
+  viewRef.current = view;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -116,14 +142,7 @@ export function BriefsMap({
         }
       }
 
-      if (pins.length === 1) {
-        map.setView([pins[0].lat, pins[0].lng], zoomRef.current);
-      } else {
-        map.fitBounds(
-          L.latLngBounds(pins.map((p) => [p.lat, p.lng])),
-          { padding: [40, 40], maxZoom: 11 },
-        );
-      }
+      applyView(L, map, viewRef.current, pins);
       mapRef.current = map;
     });
 
@@ -134,10 +153,14 @@ export function BriefsMap({
     };
   }, [pins, interactive]);
 
-  // Zoom preset changes adjust the live map instead of rebuilding it.
+  // View preset changes adjust the live map instead of rebuilding it.
   useEffect(() => {
-    if (pins.length === 1) mapRef.current?.setZoom(zoom);
-  }, [zoom, pins]);
+    const map = mapRef.current;
+    if (!map || !view) return;
+    import("leaflet").then((L) => {
+      if (mapRef.current === map) applyView(L, map, view, pins);
+    });
+  }, [view, pins]);
 
   return (
     <div

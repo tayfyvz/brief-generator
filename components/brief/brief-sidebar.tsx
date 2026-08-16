@@ -14,8 +14,9 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { BriefsMap, type BriefPin } from "@/components/briefs-map";
+import { BriefsMap, type BriefPin, type MapView } from "@/components/briefs-map";
 import { useScrollSpy } from "@/lib/hooks/use-scroll-spy";
+import { US_BOUNDS, stateBounds } from "@/lib/us-geo";
 import { cn } from "@/lib/utils";
 
 export interface SidebarNavItem {
@@ -44,13 +45,23 @@ function useActiveHref(navItems: SidebarNavItem[]): string | null {
   return activeId ? `#${activeId}` : null;
 }
 
-/** Mini-map zoom presets: how much context around the department. */
-const MAP_ZOOMS = { city: 10, state: 6, us: 4 } as const;
-const MAP_ZOOM_LABELS: Record<keyof typeof MAP_ZOOMS, string> = {
-  city: "City",
-  state: "State",
-  us: "US",
-};
+/** Mini-map view presets: how much context around the department. */
+type MapLevel = "city" | "state" | "us";
+const MAP_LEVELS: { key: MapLevel; label: string }[] = [
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "us", label: "US" },
+];
+
+/** City centers on the department; State and US frame the whole region. */
+function levelView(level: MapLevel, pin: BriefPin): MapView {
+  if (level === "city") return { kind: "center", zoom: 9 };
+  if (level === "state") {
+    const bounds = stateBounds(pin.state);
+    return bounds ? { kind: "bounds", bounds } : { kind: "center", zoom: 5 };
+  }
+  return { kind: "bounds", bounds: US_BOUNDS };
+}
 
 /**
  * Desktop sidebar: sticky section nav that highlights the section being
@@ -66,8 +77,13 @@ export function BriefSidebar({
   pin?: BriefPin | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [mapZoom, setMapZoom] = useState<keyof typeof MAP_ZOOMS>("state");
+  const [mapLevel, setMapLevel] = useState<MapLevel>("state");
   const activeHref = useActiveHref(navItems);
+  // Memoized so scroll-spy re-renders don't re-apply the same map view.
+  const mapView = useMemo(
+    () => (pin ? levelView(mapLevel, pin) : undefined),
+    [mapLevel, pin],
+  );
 
   return (
     <aside className="hidden lg:block">
@@ -167,7 +183,7 @@ export function BriefSidebar({
               <div className="overflow-hidden rounded-xl border shadow-sm">
                 <BriefsMap
                   interactive={false}
-                  zoom={MAP_ZOOMS[mapZoom]}
+                  view={mapView}
                   className="h-40 min-h-0 rounded-none border-0"
                   pins={[pin]}
                 />
@@ -176,24 +192,22 @@ export function BriefSidebar({
                   aria-label="Map zoom level"
                   className="flex divide-x border-t bg-card text-xs"
                 >
-                  {(Object.keys(MAP_ZOOMS) as (keyof typeof MAP_ZOOMS)[]).map(
-                    (level) => (
-                      <button
-                        key={level}
-                        type="button"
-                        onClick={() => setMapZoom(level)}
-                        aria-pressed={mapZoom === level}
-                        className={cn(
-                          "flex-1 py-1.5 font-medium transition",
-                          mapZoom === level
-                            ? "bg-accent text-foreground"
-                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                        )}
-                      >
-                        {MAP_ZOOM_LABELS[level]}
-                      </button>
-                    ),
-                  )}
+                  {MAP_LEVELS.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setMapLevel(key)}
+                      aria-pressed={mapLevel === key}
+                      className={cn(
+                        "flex-1 py-1.5 font-medium transition",
+                        mapLevel === key
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
