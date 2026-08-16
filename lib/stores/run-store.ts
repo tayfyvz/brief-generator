@@ -23,6 +23,8 @@ export interface RunStoreState {
   facts: FactSummary[];
   warnings: Warning[];
   capsHit: string[];
+  /** Most recent search query issued (live "what is it doing" signal). */
+  lastSearch: string | null;
   error?: string;
 
   begin(runId: string): void;
@@ -40,6 +42,7 @@ const initial = {
   facts: [],
   warnings: [],
   capsHit: [],
+  lastSearch: null,
   error: undefined,
 };
 
@@ -71,6 +74,8 @@ export const useRunStore = create<RunStoreState>((set) => ({
               },
             },
           };
+        case "search":
+          return { lastSearch: event.query };
         case "fact_added":
           return { facts: [...state.facts, event.fact] };
         case "warning":

@@ -44,6 +44,19 @@ export const runEventSchema = z.discriminatedUnion("type", [
     searchCount: z.number(),
     factCount: z.number(),
   }),
+  /**
+   * One web/similarity search issued. Persisted for run forensics: which
+   * queries a run tried is exactly what run-to-run coverage variance
+   * debugging needs, and it was invisible before.
+   */
+  z.object({
+    type: z.literal("search"),
+    scope: z.string(),
+    query: z.string(),
+    round: z.number().optional(),
+    /** True when this was a deterministic seed query, not LLM-planned. */
+    seeded: z.boolean().optional(),
+  }),
   z.object({ type: z.literal("fact_added"), fact: factSummarySchema }),
   z.object({ type: z.literal("warning"), warning: warningSchema }),
   z.object({

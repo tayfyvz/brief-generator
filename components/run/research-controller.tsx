@@ -67,7 +67,7 @@ export function ResearchController({
   );
 
   const start = useCallback(
-    async (body: Record<string, string>) => {
+    async (body: { placeId?: string; resumeRunId?: string; fresh?: boolean }) => {
       markStarting();
       try {
         const res = await fetch("/api/research", {
@@ -119,14 +119,26 @@ export function ResearchController({
           </Button>
         )}
         {!live && (hasBrief || status === "done" || status === "failed") && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1.5 text-xs"
-            onClick={() => void start({ placeId })}
-          >
-            <RefreshCw className="size-3" /> Refresh
-          </Button>
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 text-xs"
+              title="Rerun research, keeping every verified fact from the last run and spending the budget on gaps."
+              onClick={() => void start({ placeId })}
+            >
+              <RefreshCw className="size-3" /> Update
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1.5 text-xs text-muted-foreground"
+              title="Rerun from scratch without carrying forward previous facts (prior runs stay in the database)."
+              onClick={() => void start({ placeId, fresh: true })}
+            >
+              Start fresh
+            </Button>
+          </>
         )}
       </div>
       {(live || status === "failed") && (

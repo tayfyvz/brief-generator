@@ -27,8 +27,17 @@ function phaseState(
 }
 
 export function LiveRun({ maxRounds }: { maxRounds: number }) {
-  const { status, phases, round, tracks, facts, warnings, capsHit, error } =
-    useRunStore();
+  const {
+    status,
+    phases,
+    round,
+    tracks,
+    facts,
+    warnings,
+    capsHit,
+    lastSearch,
+    error,
+  } = useRunStore();
 
   const tracksState: "pending" | "running" | "done" =
     Object.keys(tracks).length === 0
@@ -85,6 +94,12 @@ export function LiveRun({ maxRounds }: { maxRounds: number }) {
           </li>
         ))}
       </ol>
+
+      {(status === "running" || status === "starting") && lastSearch && (
+        <p className="mt-2 truncate text-xs text-muted-foreground">
+          Searching: <span className="italic">“{lastSearch}”</span>
+        </p>
+      )}
 
       {/* Track cards */}
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">

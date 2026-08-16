@@ -538,6 +538,12 @@ export function makeTrackNode(track: TrackDef) {
         budgetExhausted = true;
         break;
       }
+      emit({
+        type: "search",
+        scope: `track:${track.key}`,
+        query,
+        seeded: seeds.includes(query),
+      });
       const results = await withDegrade(
         () => search.search(query, { maxResults: 5 }),
         [],
@@ -732,6 +738,12 @@ export async function planExpansion(
     };
     if (!tryConsume(state.runId, "search")) return out;
     out.query = leadKey(lead.kind, lead.query);
+    emit({
+      type: "search",
+      scope: `expansion:${lead.kind}`,
+      query: lead.query,
+      round,
+    });
     const results = await withDegrade(
       () =>
         lead.kind === "similar" && isUrl(lead.query)
