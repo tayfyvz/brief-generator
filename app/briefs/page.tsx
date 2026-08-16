@@ -95,26 +95,36 @@ export default async function BriefsPage({
   const pagination = pageCount > 1 && (
     <nav
       aria-label="Brief pages"
-      className="mt-6 flex items-center justify-center gap-1.5"
+      className="flex items-center justify-center gap-1.5"
     >
       <PageLink href={viewHref(page - 1)} disabled={page <= 1} ariaLabel="Previous page">
         <ChevronLeft className="size-4" />
       </PageLink>
-      {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
-        <Link
-          key={n}
-          href={viewHref(n)}
-          aria-current={n === page ? "page" : undefined}
-          className={cn(
-            "flex size-9 items-center justify-center rounded-lg text-sm font-medium tabular-nums transition",
-            n === page
-              ? "bg-primary text-primary-foreground"
-              : "border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
-          )}
-        >
-          {n}
-        </Link>
-      ))}
+      {pageWindow(page, pageCount).map((n, i) =>
+        n === "…" ? (
+          <span
+            key={`gap-${i}`}
+            aria-hidden
+            className="flex size-9 items-end justify-center text-sm text-muted-foreground"
+          >
+            …
+          </span>
+        ) : (
+          <Link
+            key={n}
+            href={viewHref(n)}
+            aria-current={n === page ? "page" : undefined}
+            className={cn(
+              "flex size-9 items-center justify-center rounded-lg text-sm font-medium tabular-nums transition",
+              n === page
+                ? "bg-primary text-primary-foreground"
+                : "border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            {n}
+          </Link>
+        ),
+      )}
       <PageLink href={viewHref(page + 1)} disabled={page >= pageCount} ariaLabel="Next page">
         <ChevronRight className="size-4" />
       </PageLink>
@@ -159,18 +169,35 @@ export default async function BriefsPage({
             researched: relativeDays(p.createdAt),
           }))}
           total={total}
-        >
-          {list}
-          {pagination}
-        </BriefsExplorer>
+          list={list}
+          pagination={pagination}
+        />
       ) : (
         <div className="@container mt-8">
           {list}
-          {pagination}
+          {pagination && <div className="mt-6">{pagination}</div>}
         </div>
       )}
     </main>
   );
+}
+
+/** Page numbers to render: all of them up to 7, else first/last/current±1 with gaps. */
+function pageWindow(page: number, pageCount: number): (number | "…")[] {
+  if (pageCount <= 7) {
+    return Array.from({ length: pageCount }, (_, i) => i + 1);
+  }
+  const shown = [...new Set([1, page - 1, page, page + 1, pageCount])]
+    .filter((n) => n >= 1 && n <= pageCount)
+    .sort((a, b) => a - b);
+  const out: (number | "…")[] = [];
+  let prev = 0;
+  for (const n of shown) {
+    if (n - prev > 1) out.push("…");
+    out.push(n);
+    prev = n;
+  }
+  return out;
 }
 
 function PageLink({

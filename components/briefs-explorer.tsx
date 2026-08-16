@@ -11,19 +11,29 @@ import { cn } from "@/lib/utils";
  * width, wrapping the list to a full-width row below it. The list column is
  * a container-query context so its grid re-flows with the panel width.
  *
+ * Collapsed on desktop, both panels share one viewport-fit height (100dvh
+ * minus the page chrome above and below the explorer), the list scrolls
+ * inside its own column, and the pagination stays pinned under it — the page
+ * itself never scrolls. Expanded, and on smaller screens, the layout flows
+ * and scrolls normally.
+ *
  * The height/width animations live on wrapper divs, NOT on the map's own
  * container: React re-applying a changed className to the mounted div would
  * wipe the classes Leaflet added at init (leaflet-container etc.) and blank
  * the tiles.
  */
+const PANEL_HEIGHT = "lg:h-[max(30rem,calc(100dvh-21rem))]";
+
 export function BriefsExplorer({
   pins,
   total,
-  children,
+  list,
+  pagination,
 }: {
   pins: BriefPin[];
   total: number;
-  children: React.ReactNode;
+  list: React.ReactNode;
+  pagination?: React.ReactNode;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -31,14 +41,16 @@ export function BriefsExplorer({
     <div className="mt-8 flex flex-wrap items-start gap-x-6 gap-y-8">
       <div
         className={cn(
-          "min-w-0 grow basis-full transition-[flex-basis] duration-500 ease-in-out motion-reduce:transition-none",
-          !expanded && "lg:basis-[calc(60%-0.75rem)]",
+          "flex min-w-0 grow basis-full flex-col transition-[flex-basis] duration-500 ease-in-out motion-reduce:transition-none",
+          !expanded && cn("lg:basis-[calc(60%-0.75rem)]", PANEL_HEIGHT),
         )}
       >
         <div
           className={cn(
-            "fade-up relative min-h-[420px] transition-[height] duration-500 ease-in-out motion-reduce:transition-none",
-            expanded ? "h-[85vh]" : "h-[60vh]",
+            "fade-up relative transition-[height] duration-500 ease-in-out motion-reduce:transition-none",
+            expanded
+              ? "h-[85vh] min-h-[420px]"
+              : "h-[60vh] min-h-[420px] lg:h-auto lg:min-h-0 lg:flex-1",
           )}
         >
           <BriefsMap pins={pins} className="h-full min-h-0" />
@@ -61,7 +73,7 @@ export function BriefsExplorer({
             )}
           </button>
         </div>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-xs text-muted-foreground">
+        <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-1 text-xs text-muted-foreground">
           <p className="flex flex-wrap items-center gap-3">
             <span>Researched:</span>
             {(["fresh", "aging", "stale"] as const).map((f) => (
@@ -87,10 +99,28 @@ export function BriefsExplorer({
       <div
         className={cn(
           "@container min-w-0 grow basis-full transition-[flex-basis] duration-500 ease-in-out motion-reduce:transition-none",
-          !expanded && "lg:basis-[calc(40%-0.75rem)]",
+          !expanded &&
+            cn("lg:flex lg:basis-[calc(40%-0.75rem)] lg:flex-col", PANEL_HEIGHT),
         )}
       >
-        {children}
+        <div
+          className={cn(
+            !expanded &&
+              "lg:-mr-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-2",
+          )}
+        >
+          {list}
+        </div>
+        {pagination && (
+          <div
+            className={cn(
+              "mt-6",
+              !expanded && "lg:mt-3 lg:shrink-0 lg:border-t lg:pt-3",
+            )}
+          >
+            {pagination}
+          </div>
+        )}
       </div>
     </div>
   );
