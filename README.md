@@ -78,7 +78,3 @@ Deployed on [Railway](https://railway.com): single Docker image plus a managed P
 4. Deploy. Migrations run at boot, so a fresh database needs no manual setup.
 
 Keep the app at **one replica**: research runs execute in-process and stream over SSE from the same instance, so state is not shared across replicas.
-
-## Results and design notes
-
-Live results on the three sample departments, what counts as signal vs noise, failure modes, and the scaling design are in [NOTES.md](NOTES.md).
