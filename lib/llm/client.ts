@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import type { z } from "zod/v4";
+import OpenAI from "openai";
+import { z } from "zod/v4";
 import { getEnv } from "@/lib/env";
 import { getStubStructuredOutput } from "./stub";
 
@@ -61,6 +62,59 @@ class AnthropicLlmClient implements LlmClient {
   }
 }
 
+/**
+ * OpenAI-backed client (user-directed alternative when no funded Anthropic
+ * key is available). Uses chat completions with a JSON-schema response
+ * format derived from the same Zod schema, then validates with Zod — the
+ * Zod parse is the real gate; one retry on invalid output.
+ */
+class OpenAiLlmClient implements LlmClient {
+  readonly stubbed = false;
+  private readonly client: OpenAI;
+  private readonly model: string;
+
+  constructor(apiKey: string, model: string) {
+    this.client = new OpenAI({ apiKey });
+    this.model = model;
+  }
+
+  async structured<T>(req: StructuredRequest<T>): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        max_completion_tokens: req.maxTokens ?? 8192,
+        messages: [
+          {
+            role: "system",
+            content: `${req.system}\nRespond with a single JSON object matching the required schema — no prose.`,
+          },
+          { role: "user", content: req.prompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: req.task,
+            schema: z.toJSONSchema(req.schema) as Record<string, unknown>,
+            strict: false,
+          },
+        },
+      });
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        lastError = new Error(`empty response (finish: ${response.choices[0]?.finish_reason})`);
+        continue;
+      }
+      try {
+        return req.schema.parse(JSON.parse(content));
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw new Error(`LLM output invalid for task "${req.task}": ${lastError}`);
+  }
+}
+
 class StubLlmClient implements LlmClient {
   readonly stubbed = true;
 
@@ -74,7 +128,11 @@ let client: LlmClient | undefined;
 
 export function getLlmClient(): LlmClient {
   if (client) return client;
-  const key = getEnv().ANTHROPIC_API_KEY;
-  client = key ? new AnthropicLlmClient(key) : new StubLlmClient();
+  const env = getEnv();
+  client = env.ANTHROPIC_API_KEY
+    ? new AnthropicLlmClient(env.ANTHROPIC_API_KEY)
+    : env.OPENAI_API_KEY
+      ? new OpenAiLlmClient(env.OPENAI_API_KEY, env.OPENAI_MODEL)
+      : new StubLlmClient();
   return client;
 }

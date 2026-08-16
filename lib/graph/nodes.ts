@@ -179,7 +179,9 @@ export function makeTrackNode(track: TrackDef) {
           task: "planQueries",
           system:
             "You plan web searches for one research track of a fire-department sales brief. " +
-            "Return focused queries an analyst would run.",
+            "Return focused queries an analyst would run. Every query MUST include the " +
+            "department's city and state (add the county when useful) — many US departments " +
+            "share names, and an unqualified query surfaces the wrong one.",
           prompt: [
             anchorPacket(anchor, state.entityGraph),
             SOURCE_PLAYBOOK,
@@ -245,8 +247,12 @@ export function makeTrackNode(track: TrackDef) {
               task: "extractFacts",
               system:
                 "You extract sales-relevant facts about ONE fire department from ONE page. " +
-                "Every fact needs a claim plus a VERBATIM quote copied exactly from the page. " +
-                "Skip anything about a different department than the anchor.",
+                "Every fact needs a claim plus a VERBATIM quote: one contiguous span copied " +
+                "character-for-character from the page text — no paraphrasing, no stitching " +
+                "separate sentences together, no fixing typos. Facts with inexact quotes are dropped. " +
+                "If the page is about a similarly-named department in a different city, county, " +
+                "or state than the anchor, return an EMPTY facts list — wrong-department " +
+                "contamination is worse than no facts.",
               prompt: [
                 anchorPacket(anchor, state.entityGraph),
                 `## Track: ${track.title} — ${track.focus}`,
@@ -388,11 +394,22 @@ export async function planExpansion(
   for (const lead of leads) {
     if (!tryConsume(state.runId, "search")) break;
     newQueries.push(leadKey(lead.kind, lead.query));
+    // A "similar" lead must carry a real URL; planners sometimes hand back
+    // prose — route those through semantic search instead of erroring.
+    const isUrl = (s: string) => {
+      try {
+        return Boolean(new URL(s));
+      } catch {
+        return false;
+      }
+    };
     const results = await withDegrade(
       () =>
-        lead.kind === "similar"
+        lead.kind === "similar" && isUrl(lead.query)
           ? similarity.findSimilar(lead.query, 5)
-          : search.search(lead.query, { maxResults: 5 }),
+          : lead.kind === "similar"
+            ? similarity.searchSemantic(lead.query, 5)
+            : search.search(lead.query, { maxResults: 5 }),
       [],
       `expansion:${lead.kind}`,
       pushWarning,
@@ -422,8 +439,12 @@ export async function planExpansion(
             task: "extractFacts",
             system:
               "You extract sales-relevant facts about ONE fire department from ONE page. " +
-              "Every fact needs a claim plus a VERBATIM quote copied exactly from the page. " +
-              "Skip anything about a different department than the anchor.",
+              "Every fact needs a claim plus a VERBATIM quote: one contiguous span copied " +
+                "character-for-character from the page text — no paraphrasing, no stitching " +
+                "separate sentences together, no fixing typos. Facts with inexact quotes are dropped. " +
+              "If the page is about a similarly-named department in a different city, county, " +
+                "or state than the anchor, return an EMPTY facts list — wrong-department " +
+                "contamination is worse than no facts.",
             prompt: [
               anchorPacket(anchor, state.entityGraph),
               `## Lead: ${lead.reason}`,
@@ -649,7 +670,11 @@ export async function synthesize(
               task: "synthesize",
               system:
                 "You write a one-page sales brief for a fire-apparatus account executive from verified, cited facts. " +
-                "Only reference fact IDs you were given. Rank 'why call today' by sales relevance and recency.",
+                "Only reference fact IDs you were given. Rank 'why call today' by sales relevance and recency. " +
+                "Signals must be concrete and actionable — dated events, dollar amounts, aging apparatus, " +
+                "awarded grants, open bids, leadership changes. Never write generic headlines like " +
+                "'active community engagement'; if nothing concrete exists, return fewer signals and " +
+                "note the gap in caveats instead.",
               prompt: [
                 anchorPacket(state.anchor!, state.entityGraph),
                 "## Verified facts (id · category · claim · as-of)",

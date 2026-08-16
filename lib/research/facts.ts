@@ -6,6 +6,26 @@ import type { StoredFact } from "@/lib/graph/state";
 
 const normalize = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 
+/**
+ * Models return partial dates ("2025", "2024-06") despite the schema asking
+ * for yyyy-mm-dd. Normalize to a full ISO date (missing parts → 01) or null —
+ * a bad date must never fail the insert and lose the fact.
+ */
+export function normalizeAsOfDate(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const m = input.trim().match(/^(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  if (year < 1900 || year > 2100) return null;
+  const month = Number(m[2] ?? 1);
+  const day = Number(m[3] ?? 1);
+  if (month < 1 || month > 12) return null;
+  // Reject impossible days (e.g. Feb 31) instead of letting Date roll over.
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return `${m[1]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 /** Whitespace-insensitive containment check for verbatim quotes. */
 export function quoteAppearsIn(quote: string, markdown: string): boolean {
   const q = normalize(quote);
@@ -83,7 +103,7 @@ export async function storeExtractedFacts(opts: {
         tags: f.tags,
         claim: f.claim,
         quote: f.quote,
-        asOfDate: f.asOfDate,
+        asOfDate: normalizeAsOfDate(f.asOfDate),
         discoveredRound: round,
         confidence: f.confidence,
         verification: "unverified",
@@ -99,7 +119,7 @@ export async function storeExtractedFacts(opts: {
       tags: f.tags,
       claim: f.claim,
       quote: f.quote,
-      asOfDate: f.asOfDate,
+      asOfDate: normalizeAsOfDate(f.asOfDate),
       tier,
     })),
     droppedQuotes,

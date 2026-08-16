@@ -17,10 +17,15 @@ export const envSchema = z.object({
     .describe("Postgres connection string, e.g. postgres://user:pass@host:5432/db"),
 
   // External service keys — all optional; missing key => stubbed client.
+  // LLM provider: Anthropic is preferred when set; OpenAI is the fallback.
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_MODEL: z.string().min(1).default("gpt-4.1"),
   TAVILY_API_KEY: z.string().min(1).optional(),
   EXA_API_KEY: z.string().min(1).optional(),
   FIRECRAWL_API_KEY: z.string().min(1).optional(),
+  /** Firecrawl requests/minute budget (free tier is ~10/min). */
+  FIRECRAWL_RPM: z.coerce.number().int().positive().default(10),
   GOOGLE_PLACES_API_KEY: z.string().min(1).optional(),
 
   // Per-run hard caps (PLAN §2) — every run finishes with whatever it has.

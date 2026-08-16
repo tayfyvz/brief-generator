@@ -65,11 +65,35 @@ async function directFetch(url: string): Promise<FetchedPage | null> {
   return fetchedPageSchema.parse({ url, title, markdown: text });
 }
 
+/**
+ * Process-wide token bucket: six parallel tracks otherwise blow through
+ * Firecrawl's per-minute quota instantly. Callers wait for a slot.
+ */
+const requestTimes: number[] = [];
+async function waitForFirecrawlSlot(rpm: number): Promise<void> {
+  for (;;) {
+    const now = Date.now();
+    while (requestTimes.length > 0 && now - requestTimes[0] > 60_000) {
+      requestTimes.shift();
+    }
+    if (requestTimes.length < rpm) {
+      requestTimes.push(now);
+      return;
+    }
+    const waitMs = 60_000 - (now - requestTimes[0]) + 250;
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+}
+
 class FirecrawlClient implements FetchClient {
   readonly stubbed = false;
-  constructor(private readonly apiKey: string) {}
+  constructor(
+    private readonly apiKey: string,
+    private readonly rpm: number,
+  ) {}
 
   async fetchPage(url: string): Promise<FetchedPage | null> {
+    await waitForFirecrawlSlot(this.rpm);
     const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
       headers: {
@@ -78,7 +102,12 @@ class FirecrawlClient implements FetchClient {
       },
       body: JSON.stringify({ url, formats: ["markdown"], timeout: 30_000 }),
     });
-    if (res.status === 402 || res.status === 429) {
+    if (res.status === 429) {
+      // Quota exhausted despite the bucket — degrade to the direct fetcher
+      // rather than losing the page.
+      return directFetch(url);
+    }
+    if (res.status === 402) {
       throw new Error(`Firecrawl ${res.status}: ${await res.text()}`);
     }
     if (!res.ok) {
@@ -109,7 +138,9 @@ let client: FetchClient | undefined;
 
 export function getFetchClient(): FetchClient {
   if (client) return client;
-  const key = getEnv().FIRECRAWL_API_KEY;
-  client = key ? new FirecrawlClient(key) : new StubFetchClient();
+  const env = getEnv();
+  client = env.FIRECRAWL_API_KEY
+    ? new FirecrawlClient(env.FIRECRAWL_API_KEY, env.FIRECRAWL_RPM)
+    : new StubFetchClient();
   return client;
 }
