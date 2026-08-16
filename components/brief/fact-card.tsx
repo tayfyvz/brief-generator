@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Quote } from "lucide-react";
+import { ExternalLink, Quote, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -27,7 +27,7 @@ const TIER_BADGE: Record<number, string> = {
   4: "border-amber-500/50 text-amber-700 dark:text-amber-400",
 };
 
-/** Citation chip → popover: the "where'd you hear that" answer in one click. */
+/** Citation chip and popover: the "where'd you hear that" answer in one click. */
 export function CitationChip({
   fact,
   source,
@@ -55,9 +55,7 @@ export function CitationChip({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-96 max-w-[90vw] text-sm">
         <div className="flex items-start justify-between gap-2">
-          <p className="font-medium leading-snug">
-            {source.title ?? host}
-          </p>
+          <p className="font-medium leading-snug">{source.title ?? host}</p>
           {source.tier != null && (
             <Badge variant="outline" className={cn("shrink-0", TIER_BADGE[source.tier])}>
               T{source.tier} · {TIER_LABELS[source.tier]}
@@ -95,9 +93,17 @@ export function FactCard({
   source: SourceRow | undefined;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div
+      id={`fact-${fact.id}`}
+      className="scroll-mt-24 rounded-lg border bg-card p-4 transition-shadow"
+    >
       <p className="text-sm leading-relaxed">{fact.claim}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        {fact.usefulness === "high" && (
+          <span className="inline-flex items-center gap-1 font-medium text-primary">
+            <Star className="size-3 fill-current" /> key fact
+          </span>
+        )}
         {fact.confidence && (
           <span
             className="inline-flex items-center gap-1.5"
@@ -123,7 +129,7 @@ export function FactCard({
         {fact.verification === "conflicted" && (
           <Badge
             variant="outline"
-            className="border-red-500/50 text-red-600 dark:text-red-400"
+            className="border-amber-500/50 text-amber-600 dark:text-amber-400"
           >
             conflicting sources
           </Badge>

@@ -135,7 +135,7 @@ export function LiveRun({ maxRounds }: { maxRounds: number }) {
         <div className="mt-3 space-y-1 text-xs text-amber-600 dark:text-amber-400">
           {error && <p className="text-destructive">Error: {error}</p>}
           {capsHit.length > 0 && (
-            <p>Budget reached ({capsHit.join(", ")}) — finished with what we had.</p>
+            <p>Budget reached ({capsHit.join(", ")}); finished with what we had.</p>
           )}
           {warnings.map((w, i) => (
             <p key={i}>

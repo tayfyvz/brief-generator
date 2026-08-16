@@ -28,7 +28,7 @@ export function PlaceIdForm() {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Paste a Google Place ID — e.g. ChIJpcN7ecgAyIkRrOcWzZx3Yyc"
+          placeholder="Paste a Google Place ID, e.g. ChIJpcN7ecgAyIkRrOcWzZx3Yyc"
           className="h-11 flex-1 rounded-md border bg-background px-4 font-mono text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-ring"
           aria-label="Google Place ID"
         />

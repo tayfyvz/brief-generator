@@ -84,3 +84,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Flash highlight when a search result reveals its fact card. */
+.fact-flash {
+  animation: fact-flash 2s ease-out;
+}
+@keyframes fact-flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 2px var(--color-ring);
+    background-color: color-mix(in oklab, var(--color-primary) 8%, var(--color-card));
+  }
+  100% {
+    box-shadow: none;
+  }
+}

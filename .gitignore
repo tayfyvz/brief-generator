@@ -43,3 +43,7 @@ next-env.d.ts
 
 # browser test artifacts
 .playwright-mcp/
+
+# Assignment materials (confidential, never commit)
+*.pdf
+*.docx

@@ -8,9 +8,9 @@ import { relativeDays } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 const SAMPLES: { placeId: string; label: string }[] = [
-  { placeId: "ChIJpcN7ecgAyIkRrOcWzZx3Yyc", label: "Wise Avenue VFC — Dundalk, MD" },
-  { placeId: "ChIJvfrKDp_Ua4gR5CHnUz3MbvE", label: "Lexington FD — Lexington, IN" },
-  { placeId: "ChIJr-yREGP9tEwRr7M-F00PpM8", label: "Washington FD — Washington, VT" },
+  { placeId: "ChIJpcN7ecgAyIkRrOcWzZx3Yyc", label: "Wise Avenue VFC · Dundalk, MD" },
+  { placeId: "ChIJvfrKDp_Ua4gR5CHnUz3MbvE", label: "Lexington FD · Lexington, IN" },
+  { placeId: "ChIJr-yREGP9tEwRr7M-F00PpM8", label: "Washington FD · Washington, VT" },
 ];
 
 export default async function Home() {
@@ -26,8 +26,8 @@ export default async function Home() {
           Fire Department Brief Generator
         </h1>
         <p className="max-w-md text-balance text-muted-foreground">
-          Paste a Google Place ID and get a fully-cited one-page brief —
-          leadership, fleet, money moving — researched live.
+          Paste a Google Place ID and get a fully cited one-page brief covering
+          leadership, fleet, and money moving, researched live.
         </p>
       </div>
 

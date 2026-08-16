@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { CornerDownRight, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useBriefUiStore } from "@/lib/stores/brief-ui-store";
 
 interface SearchResult {
   id: string;
@@ -11,7 +12,7 @@ interface SearchResult {
   quote: string;
 }
 
-/** Render ⟦…⟧ highlight markers from ts_headline as <mark> — no raw HTML. */
+/** Render ⟦…⟧ highlight markers from ts_headline as <mark>; no raw HTML. */
 function Highlighted({ text }: { text: string }) {
   const parts = text.split(/⟦|⟧/);
   return (
@@ -29,11 +30,16 @@ function Highlighted({ text }: { text: string }) {
   );
 }
 
-/** Fact quick-find (press "/" to focus): FTS over claim/quote/tags. */
+/**
+ * Fact quick-find (press "/" to focus): FTS over claim/quote/tags. Clicking
+ * a result jumps to that fact card on the page (expanding its section if the
+ * fact is behind "Show all").
+ */
 export function FactSearch({ placeId }: { placeId: string }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const revealFact = useBriefUiStore((s) => s.revealFact);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -67,7 +73,7 @@ export function FactSearch({ placeId }: { placeId: string }) {
           setResults(data.results);
         }
       } catch {
-        // aborted or offline — keep previous results
+        // aborted or offline; keep previous results
       }
     }, 250);
     return () => {
@@ -84,7 +90,7 @@ export function FactSearch({ placeId }: { placeId: string }) {
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder='Search the findings — try "tiller" or "grant" (press / to focus)'
+          placeholder='Search the findings, e.g. "pumper" or "grant" (press / to focus)'
           className="h-10 w-full rounded-md border bg-background pl-9 pr-9 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-ring"
           aria-label="Search facts"
         />
@@ -108,14 +114,29 @@ export function FactSearch({ placeId }: { placeId: string }) {
           ) : (
             <ul className="divide-y">
               {results.map((r) => (
-                <li key={r.id} className="px-4 py-3 text-sm">
-                  <Badge variant="secondary" className="mr-2 align-middle">
-                    {r.category}
-                  </Badge>
-                  <Highlighted text={r.claim} />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    “<Highlighted text={r.quote} />”
-                  </p>
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      setResults(null);
+                      revealFact(r.id);
+                    }}
+                    className="group flex w-full items-start gap-2 px-4 py-3 text-left text-sm transition hover:bg-accent"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <Badge variant="secondary" className="mr-2 align-middle">
+                        {r.category}
+                      </Badge>
+                      <Highlighted text={r.claim} />
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        “<Highlighted text={r.quote} />”
+                      </span>
+                    </span>
+                    <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground opacity-0 transition group-hover:opacity-100">
+                      <CornerDownRight className="size-3" /> jump to fact
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>
