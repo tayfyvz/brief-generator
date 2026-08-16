@@ -84,6 +84,9 @@ export function BriefSidebar({
     () => (pin ? levelView(mapLevel, pin) : undefined),
     [mapLevel, pin],
   );
+  // Stable array identity: an inline `[pin]` literal would re-run BriefsMap's
+  // init effect (rebuilding the whole Leaflet map) on every scroll-spy render.
+  const mapPins = useMemo(() => (pin ? [pin] : []), [pin]);
 
   return (
     <aside className="hidden lg:block">
@@ -185,7 +188,7 @@ export function BriefSidebar({
                   interactive={false}
                   view={mapView}
                   className="h-40 min-h-0 rounded-none border-0"
-                  pins={[pin]}
+                  pins={mapPins}
                 />
                 <div
                   role="group"

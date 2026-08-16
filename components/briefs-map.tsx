@@ -78,6 +78,27 @@ export function BriefsMap({
   const viewRef = useRef(view);
   viewRef.current = view;
 
+  // The container can be resized by layout animations (e.g. an expand
+  // toggle); Leaflet caches its size and needs an explicit nudge once the
+  // resize settles, or its tiles stay clipped to the old dimensions. Calling
+  // invalidateSize on every intermediate frame of a CSS transition instead
+  // confuses Leaflet's own zoom-animation state, so this waits for the
+  // resize to go quiet before nudging it.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => mapRef.current?.invalidateSize(), 200);
+    });
+    observer.observe(container);
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container || pins.length === 0) return;

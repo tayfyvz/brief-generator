@@ -4,11 +4,9 @@ import {
   ChevronLeft,
   ChevronRight,
   LibraryBig,
-  List,
-  Map as MapIcon,
   MapPin,
 } from "lucide-react";
-import { BriefsMap } from "@/components/briefs-map";
+import { BriefsExplorer } from "@/components/briefs-explorer";
 import { LibraryFilter } from "@/components/library-filter";
 import { getBriefLibrary, getBriefPins } from "@/lib/db/queries";
 import { FRESHNESS_META, freshness, relativeDays } from "@/lib/format";
@@ -24,29 +22,104 @@ const PAGE_SIZE = 12;
 export default async function BriefsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; view?: string; q?: string }>;
+  searchParams: Promise<{ page?: string; q?: string }>;
 }) {
-  const { page: rawPage, view, q: rawQ } = await searchParams;
+  const { page: rawPage, q: rawQ } = await searchParams;
   const requested = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
-  const mapView = view === "map";
   const q = rawQ?.trim() ?? "";
 
-  const { rows, total } = await getBriefLibrary(requested, PAGE_SIZE, q).catch(
-    () => ({ rows: [], total: 0 }),
-  );
-  const pins = mapView ? await getBriefPins(q).catch(() => []) : [];
+  const [{ rows, total }, pins] = await Promise.all([
+    getBriefLibrary(requested, PAGE_SIZE, q).catch(() => ({ rows: [], total: 0 })),
+    getBriefPins(q).catch(() => []),
+  ]);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(requested, pageCount);
 
-  /** /briefs href preserving the filter and, when asked, the map view. */
-  const viewHref = (map: boolean, pageNum?: number) => {
+  /** /briefs href preserving the filter and page. */
+  const viewHref = (pageNum?: number) => {
     const params = new URLSearchParams();
-    if (map) params.set("view", "map");
     if (q) params.set("q", q);
     if (pageNum && pageNum > 1) params.set("page", String(pageNum));
     const qs = params.toString();
     return qs ? `/briefs?${qs}` : "/briefs";
   };
+
+  const list =
+    rows.length === 0 ? (
+      <div className="rounded-xl border border-dashed p-10 text-center">
+        <p className="font-medium">{q ? "No matching briefs" : "No briefs yet"}</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+          {q
+            ? `Nothing matches “${q}”. Try a different name, city, or state.`
+            : "Paste a Google Place ID on the home page and the researched brief will show up here."}
+        </p>
+      </div>
+    ) : (
+      <ul className="grid gap-3 @lg:grid-cols-2 @3xl:grid-cols-3">
+        {rows.map((b, i) => (
+          <li
+            key={b.placeId}
+            className="fade-up"
+            style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+          >
+            <Link
+              href={`/brief/${b.placeId}`}
+              className="card-link group flex h-full flex-col p-4"
+            >
+              <p className="font-medium leading-snug">{b.name}</p>
+              {(b.city || b.state) && (
+                <p className="mt-1 inline-flex items-center gap-1 text-sm text-muted-foreground">
+                  <MapPin className="size-3.5" />
+                  {[b.city, b.state].filter(Boolean).join(", ")}
+                </p>
+              )}
+              <p className="mt-auto flex items-center justify-between pt-3 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      FRESHNESS_META[freshness(b.createdAt)].dotClass,
+                    )}
+                  />
+                  Researched {relativeDays(b.createdAt)}
+                </span>
+                <ArrowRight className="size-3.5 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    );
+
+  const pagination = pageCount > 1 && (
+    <nav
+      aria-label="Brief pages"
+      className="mt-6 flex items-center justify-center gap-1.5"
+    >
+      <PageLink href={viewHref(page - 1)} disabled={page <= 1} ariaLabel="Previous page">
+        <ChevronLeft className="size-4" />
+      </PageLink>
+      {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+        <Link
+          key={n}
+          href={viewHref(n)}
+          aria-current={n === page ? "page" : undefined}
+          className={cn(
+            "flex size-9 items-center justify-center rounded-lg text-sm font-medium tabular-nums transition",
+            n === page
+              ? "bg-primary text-primary-foreground"
+              : "border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
+          )}
+        >
+          {n}
+        </Link>
+      ))}
+      <PageLink href={viewHref(page + 1)} disabled={page >= pageCount} ariaLabel="Next page">
+        <ChevronRight className="size-4" />
+      </PageLink>
+    </nav>
+  );
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
@@ -66,184 +139,37 @@ export default async function BriefsPage({
                 : `${total} researched department${total === 1 ? "" : "s"}, newest first.`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <nav aria-label="Library view" className="flex rounded-lg border bg-card p-0.5">
-            <ViewLink href={viewHref(false)} active={!mapView}>
-              <List className="size-4" />
-              List
-            </ViewLink>
-            <ViewLink href={viewHref(true)} active={mapView}>
-              <MapIcon className="size-4" />
-              Map
-            </ViewLink>
-          </nav>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"
-          >
-            Research a new department
-          </Link>
-        </div>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"
+        >
+          Research a new department
+        </Link>
       </div>
 
       <div className="mt-6 flex">
-        <LibraryFilter initialQuery={q} mapView={mapView} />
+        <LibraryFilter initialQuery={q} />
       </div>
 
-      {mapView ? (
-        pins.length === 0 ? (
-          <div className="mt-10 rounded-xl border border-dashed p-10 text-center">
-            <p className="font-medium">
-              {q ? "No matching briefs to map" : "Nothing to map yet"}
-            </p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-              {q
-                ? `No mapped brief matches “${q}”. Try a different name, city, or state.`
-                : "Briefs with a known location will show up here as pins."}
-            </p>
-          </div>
-        ) : (
-          <div className="fade-up mt-8">
-            <BriefsMap
-              pins={pins.map((p) => ({
-                ...p,
-                freshness: freshness(p.createdAt),
-                researched: relativeDays(p.createdAt),
-              }))}
-            />
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-xs text-muted-foreground">
-              <p className="flex flex-wrap items-center gap-3">
-                <span>Researched:</span>
-                {(["fresh", "aging", "stale"] as const).map((f) => (
-                  <span key={f} className="inline-flex items-center gap-1.5">
-                    <span
-                      aria-hidden
-                      className={cn("size-2 rounded-full", FRESHNESS_META[f].dotClass)}
-                    />
-                    {FRESHNESS_META[f].label}
-                  </span>
-                ))}
-              </p>
-              {pins.length < total && (
-                <p>
-                  {total - pins.length} brief
-                  {total - pins.length === 1 ? "" : "s"} without coordinates{" "}
-                  {total - pins.length === 1 ? "is" : "are"} only in the list
-                  view.
-                </p>
-              )}
-            </div>
-          </div>
-        )
-      ) : rows.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed p-10 text-center">
-          <p className="font-medium">{q ? "No matching briefs" : "No briefs yet"}</p>
-          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            {q
-              ? `Nothing matches “${q}”. Try a different name, city, or state.`
-              : "Paste a Google Place ID on the home page and the researched brief will show up here."}
-          </p>
-        </div>
-      ) : (
-        <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((b, i) => (
-            <li
-              key={b.placeId}
-              className="fade-up"
-              style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-            >
-              <Link
-                href={`/brief/${b.placeId}`}
-                className="card-link group flex h-full flex-col p-4"
-              >
-                <p className="font-medium leading-snug">{b.name}</p>
-                {(b.city || b.state) && (
-                  <p className="mt-1 inline-flex items-center gap-1 text-sm text-muted-foreground">
-                    <MapPin className="size-3.5" />
-                    {[b.city, b.state].filter(Boolean).join(", ")}
-                  </p>
-                )}
-                <p className="mt-auto flex items-center justify-between pt-3 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "size-1.5 rounded-full",
-                        FRESHNESS_META[freshness(b.createdAt)].dotClass,
-                      )}
-                    />
-                    Researched {relativeDays(b.createdAt)}
-                  </span>
-                  <ArrowRight className="size-3.5 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {!mapView && pageCount > 1 && (
-        <nav
-          aria-label="Brief pages"
-          className="mt-8 flex items-center justify-center gap-1.5"
+      {pins.length > 0 ? (
+        <BriefsExplorer
+          pins={pins.map((p) => ({
+            ...p,
+            freshness: freshness(p.createdAt),
+            researched: relativeDays(p.createdAt),
+          }))}
+          total={total}
         >
-          <PageLink
-            href={viewHref(false, page - 1)}
-            disabled={page <= 1}
-            ariaLabel="Previous page"
-          >
-            <ChevronLeft className="size-4" />
-          </PageLink>
-          {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
-            <Link
-              key={n}
-              href={viewHref(false, n)}
-              aria-current={n === page ? "page" : undefined}
-              className={cn(
-                "flex size-9 items-center justify-center rounded-lg text-sm font-medium tabular-nums transition",
-                n === page
-                  ? "bg-primary text-primary-foreground"
-                  : "border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              {n}
-            </Link>
-          ))}
-          <PageLink
-            href={viewHref(false, page + 1)}
-            disabled={page >= pageCount}
-            ariaLabel="Next page"
-          >
-            <ChevronRight className="size-4" />
-          </PageLink>
-        </nav>
+          {list}
+          {pagination}
+        </BriefsExplorer>
+      ) : (
+        <div className="@container mt-8">
+          {list}
+          {pagination}
+        </div>
       )}
     </main>
-  );
-}
-
-function ViewLink({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition",
-        active
-          ? "bg-accent text-foreground"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {children}
-    </Link>
   );
 }
 

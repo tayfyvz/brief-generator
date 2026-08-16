@@ -9,13 +9,7 @@ import { Search, X } from "lucide-react";
  * (?q=) so the server filters both list pagination and map pins, and the
  * filtered view stays shareable.
  */
-export function LibraryFilter({
-  initialQuery,
-  mapView,
-}: {
-  initialQuery: string;
-  mapView: boolean;
-}) {
+export function LibraryFilter({ initialQuery }: { initialQuery: string }) {
   const router = useRouter();
   const [value, setValue] = useState(initialQuery);
   const skipFirst = useRef(true);
@@ -27,13 +21,12 @@ export function LibraryFilter({
     }
     const t = setTimeout(() => {
       const params = new URLSearchParams();
-      if (mapView) params.set("view", "map");
       if (value.trim()) params.set("q", value.trim());
       const qs = params.toString();
       router.replace(qs ? `/briefs?${qs}` : "/briefs", { scroll: false });
     }, 300);
     return () => clearTimeout(t);
-  }, [value, mapView, router]);
+  }, [value, router]);
 
   return (
     <div className="relative max-w-sm flex-1">
