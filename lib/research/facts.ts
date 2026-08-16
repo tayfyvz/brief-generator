@@ -7,6 +7,19 @@ import type { StoredFact } from "@/lib/graph/state";
 const normalize = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 
 /**
+ * Markdown-agnostic form: every non-alphanumeric run becomes one space.
+ * Models copying "quotes" out of tables and links drop the pipes, brackets,
+ * and asterisks; a punctuation-sensitive check threw away 22 roster facts in
+ * one observed run. Token order still must match, so this stays verbatim in
+ * spirit: the words must appear contiguously on the page.
+ */
+const tokenize = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/**
  * Models return partial dates ("2025", "2024-06") despite the schema asking
  * for yyyy-mm-dd. Normalize to a full ISO date (missing parts → 01) or null ; 
  * a bad date must never fail the insert and lose the fact.
@@ -26,10 +39,16 @@ export function normalizeAsOfDate(input: string | null | undefined): string | nu
   return `${m[1]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-/** Whitespace-insensitive containment check for verbatim quotes. */
+/**
+ * Containment check for verbatim quotes: exact (whitespace-insensitive)
+ * first, then markup-insensitive token matching as the fallback.
+ */
 export function quoteAppearsIn(quote: string, markdown: string): boolean {
   const q = normalize(quote);
-  return q.length > 0 && normalize(markdown).includes(q);
+  if (q.length === 0) return false;
+  if (normalize(markdown).includes(q)) return true;
+  const qt = tokenize(quote);
+  return qt.length > 0 && tokenize(markdown).includes(qt);
 }
 
 /**

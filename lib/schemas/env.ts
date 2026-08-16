@@ -28,10 +28,12 @@ export const envSchema = z.object({
   FIRECRAWL_RPM: z.coerce.number().int().positive().default(10),
   GOOGLE_PLACES_API_KEY: z.string().min(1).optional(),
 
-  // Per-run hard caps; every run finishes with whatever it has.
-  MAX_ROUNDS: z.coerce.number().int().positive().default(4),
-  MAX_SEARCHES_PER_RUN: z.coerce.number().int().positive().default(60),
-  MAX_FETCHES_PER_RUN: z.coerce.number().int().positive().default(40),
+  // Per-run hard caps; every run finishes with whatever it has. Rounds are
+  // meant to stop on their own (two dry rounds, or the planner returning no
+  // leads); MAX_ROUNDS is only the runaway backstop, so it sits high.
+  MAX_ROUNDS: z.coerce.number().int().positive().default(12),
+  MAX_SEARCHES_PER_RUN: z.coerce.number().int().positive().default(100),
+  MAX_FETCHES_PER_RUN: z.coerce.number().int().positive().default(60),
 
   // Global abuse guards (public demo endpoint).
   MAX_CONCURRENT_RUNS: z.coerce.number().int().positive().default(3),

@@ -6,7 +6,7 @@ import { getLlmClient } from "@/lib/llm/client";
 import { anchorPacket } from "@/lib/llm/prompts/anchor";
 import { SOURCE_PLAYBOOK } from "@/lib/llm/prompts/playbook";
 import { saveSnapshot } from "@/lib/research/snapshots";
-import { storeExtractedFacts } from "@/lib/research/facts";
+import { quoteAppearsIn, storeExtractedFacts } from "@/lib/research/facts";
 import { tierForUrl } from "@/lib/research/tiering";
 import { getFetchClient } from "@/lib/tools/firecrawl";
 import { getPlacesClient } from "@/lib/tools/places";
@@ -15,6 +15,8 @@ import { getSearchClient } from "@/lib/tools/tavily";
 import { getSimilarityClient } from "@/lib/tools/exa";
 import {
   EXPANSION_FETCH_RESERVE,
+  canonicalUrl,
+  claimUrl,
   hasBudget,
   recordCap,
   tryConsume,
@@ -241,7 +243,10 @@ const EXTRACT_SYSTEM = [
   "You extract sales-relevant facts about ONE fire department from ONE page,",
   "for an account executive who sells fire apparatus. The AE is non-technical",
   "and has thirty seconds: extract FEW, high-value facts, never everything the",
-  "page contains. Return at most 6 facts per page; fewer is better.",
+  "page contains. Return at most 10 facts per page; fewer is better. One",
+  "exception: apparatus rosters. When the page lists the department's current",
+  "fleet, extract EVERY current apparatus, one fact per unit; never truncate",
+  "a roster to fit the cap.",
   "Every fact needs a claim plus a VERBATIM quote: one contiguous span copied",
   "character-for-character from the page text. No paraphrasing, no stitching",
   "separate sentences together, no fixing typos. Facts with inexact quotes are dropped.",
@@ -311,6 +316,138 @@ const TIER4_EXTRACT_NOTE = [
   "community data, so precision matters more than coverage.",
 ].join("\n");
 
+/** Pages shorter than this are login walls / JS shells; extracting is noise. */
+const THIN_PAGE_CHARS = 200;
+
+const QUOTE_REPAIR_NOTE = [
+  "REPAIR TASK: each fact below was extracted from this page but DROPPED",
+  "because its quote was not found verbatim in the page text. Re-emit every",
+  "fact the page genuinely supports with a corrected quote: one contiguous",
+  "span copied character-for-character from the page text below, including",
+  "any markdown pipes, brackets, or asterisks that appear mid-span. Keep",
+  "claims unchanged unless the page contradicts them. Omit facts the page",
+  "does not actually support. Do not add new facts.",
+].join("\n");
+
+/**
+ * Shared per-page pipeline for tracks and expansion: extract facts, store
+ * the ones whose quotes verify, and give dropped quotes ONE repair pass
+ * (models copying from tables often mangle the span; re-asking with the
+ * failures listed recovers most of them; observed loss without this: 22 of
+ * 29 roster facts in a single run).
+ */
+async function extractAndStore(opts: {
+  llm: LlmClient;
+  state: ResearchStateType;
+  page: FetchedPage;
+  tier: number;
+  sourceId: string;
+  /** Track/lead-specific prompt lines placed between anchor and page. */
+  contextLines: string[];
+  scope: string;
+  round: number;
+  emit: EmitFn;
+  pushWarning: (w: Warning) => void;
+}): Promise<StoredFact[]> {
+  const { llm, state, page, tier, sourceId, contextLines, scope, round, emit, pushWarning } =
+    opts;
+  if (page.markdown.length < THIN_PAGE_CHARS) {
+    pushWarning({
+      scope: `${scope}:thin`,
+      message: `Skipped ${page.url}: page came back nearly empty (${page.markdown.length} chars), likely a login wall or JS-only page.`,
+    });
+    return [];
+  }
+
+  const promptFor = (extra: string[]) =>
+    [
+      anchorPacket(state.anchor!, state.entityGraph),
+      ...contextLines,
+      ...(tier >= 4 ? [TIER4_EXTRACT_NOTE] : []),
+      ...extra,
+      `## Page: ${page.url}`,
+      page.markdown.slice(0, 12000),
+    ].join("\n\n");
+
+  const extraction = await withDegrade(
+    () =>
+      llm.structured({
+        task: "extractFacts",
+        system: EXTRACT_SYSTEM,
+        prompt: promptFor([]),
+        schema: extractedFactsSchema,
+        context: { page, anchor: state.anchor },
+      }),
+    { facts: [] },
+    `${scope}:extract`,
+    pushWarning,
+  );
+
+  const { stored, droppedQuotes } = await storeExtractedFacts({
+    runId: state.runId,
+    placeId: state.placeId,
+    sourceId,
+    tier,
+    pageMarkdown: page.markdown,
+    extracted: extraction.facts,
+    round,
+  });
+  const allStored = [...stored];
+
+  if (droppedQuotes > 0) {
+    const failed = extraction.facts.filter((f) => !quoteAppearsIn(f.quote, page.markdown));
+    const repair = await withDegrade(
+      () =>
+        llm.structured({
+          task: "extractFacts",
+          system: EXTRACT_SYSTEM,
+          prompt: promptFor([
+            QUOTE_REPAIR_NOTE,
+            "## Dropped facts to repair (claim · failed quote)",
+            ...failed.map((f) => `- ${f.claim} · "${f.quote}"`),
+          ]),
+          schema: extractedFactsSchema,
+          context: { page, anchor: state.anchor },
+        }),
+      { facts: [] },
+      `${scope}:repair`,
+      pushWarning,
+    );
+    const { stored: repaired, droppedQuotes: stillDropped } = await storeExtractedFacts({
+      runId: state.runId,
+      placeId: state.placeId,
+      sourceId,
+      tier,
+      pageMarkdown: page.markdown,
+      extracted: repair.facts,
+      round,
+    });
+    allStored.push(...repaired);
+    if (stillDropped > 0) {
+      pushWarning({
+        scope: `${scope}:verify-quote`,
+        message: `${stillDropped} fact(s) dropped after repair: quote not found verbatim in ${page.url}`,
+      });
+    }
+  }
+
+  for (const fact of allStored) {
+    emit({
+      type: "fact_added",
+      fact: {
+        id: fact.id,
+        category: fact.category,
+        claim: fact.claim,
+        quote: fact.quote,
+        sourceId: fact.sourceId,
+        tier: fact.tier,
+        asOfDate: fact.asOfDate,
+      },
+    });
+  }
+  return allStored;
+}
+
 /** N2; one research track: plan queries → search → fetch → extract facts. */
 export function makeTrackNode(track: TrackDef) {
   return async function trackNode(
@@ -369,7 +506,7 @@ export function makeTrackNode(track: TrackDef) {
       .filter((q) => !seenQueries.has(q))
       .slice(0, MAX_QUERIES_PER_TRACK);
 
-    const visited = new Set(state.visitedUrls);
+    const visited = new Set(state.visitedUrls.map(canonicalUrl));
     const storedFacts: StoredFact[] = [];
     const newUrls: string[] = [];
     const leadHints: string[] = [];
@@ -391,18 +528,20 @@ export function makeTrackNode(track: TrackDef) {
         anchor,
         entityGraph: state.entityGraph,
         purpose: `Track "${track.title}": ${query}`,
-        results: results.filter((r) => !visited.has(r.url)),
+        results: results.filter((r) => !visited.has(canonicalUrl(r.url))),
         max: MAX_FETCHES_PER_QUERY,
         scope: `track:${track.key}:select`,
         pushWarning,
       });
 
       for (const url of urls) {
+        // Parallel tracks surface the same URLs; first claimant fetches it.
+        if (!claimUrl(state.runId, url)) continue;
         if (!tryConsume(state.runId, "fetch", EXPANSION_FETCH_RESERVE)) {
           budgetExhausted = true;
           break;
         }
-        visited.add(url);
+        visited.add(canonicalUrl(url));
         newUrls.push(url);
         const page = await withDegrade(
           () => fetch.fetchPage(url),
@@ -414,61 +553,23 @@ export function makeTrackNode(track: TrackDef) {
 
         const tier = tierForUrl(url, officialDomains);
         const { sourceId } = await saveSnapshot(state.runId, page, tier);
-
-        const extraction = await withDegrade(
-          () =>
-            llm.structured({
-              task: "extractFacts",
-              system: EXTRACT_SYSTEM,
-              prompt: [
-                anchorPacket(anchor, state.entityGraph),
-                `## Track: ${track.title}: ${track.focus}`,
-                ...(tier >= 4 ? [TIER4_EXTRACT_NOTE] : []),
-                `## Page: ${page.url}`,
-                page.markdown.slice(0, 12000),
-              ].join("\n\n"),
-              schema: extractedFactsSchema,
-              context: { page, anchor },
-            }),
-          { facts: [] },
-          `track:${track.key}:extract`,
-          pushWarning,
-        );
-
-        const { stored, droppedQuotes } = await storeExtractedFacts({
-          runId: state.runId,
-          placeId: state.placeId,
-          sourceId,
+        const stored = await extractAndStore({
+          llm,
+          state,
+          page,
           tier,
-          pageMarkdown: page.markdown,
-          extracted: extraction.facts,
+          sourceId,
+          contextLines: [`## Track: ${track.title}: ${track.focus}`],
+          scope: `track:${track.key}`,
           round: state.round,
+          emit,
+          pushWarning,
         });
         storedFacts.push(...stored);
         // Community-sourced data doubles as leads: the expansion round tries
         // to re-find each datum in an official or press source, which then
         // supersedes the tier-4 fact at verify time.
         if (tier >= 4) leadHints.push(...stored.map((f) => f.claim));
-        for (const fact of stored) {
-          emit({
-            type: "fact_added",
-            fact: {
-              id: fact.id,
-              category: fact.category,
-              claim: fact.claim,
-              quote: fact.quote,
-              sourceId: fact.sourceId,
-              tier: fact.tier,
-              asOfDate: fact.asOfDate,
-            },
-          });
-        }
-        if (droppedQuotes > 0) {
-          pushWarning({
-            scope: `track:${track.key}:verify-quote`,
-            message: `${droppedQuotes} fact(s) dropped: quote not found verbatim in ${page.url}`,
-          });
-        }
       }
       if (budgetExhausted) break;
     }
@@ -572,10 +673,17 @@ export async function planExpansion(
   );
 
   const seenQueries = new Set(state.searchedQueries);
-  const visited = new Set(state.visitedUrls);
+  const visited = new Set(state.visitedUrls.map(canonicalUrl));
   const leads = plan.leads
     .filter((lead) => !seenQueries.has(leadKey(lead.kind, lead.query)))
     .slice(0, MAX_LEADS_PER_ROUND);
+
+  // The planner deciding another round would add nothing is a deliberate
+  // stop signal, not a dry round to wait out.
+  if (leads.length === 0) {
+    emit({ type: "phase", phase: "expansion", status: "done", round });
+    return { round, dryRounds: 2, warnings };
+  }
 
   const storedFacts: StoredFact[] = [];
   const newQueries: string[] = [];
@@ -611,15 +719,16 @@ export async function planExpansion(
       anchor,
       entityGraph: state.entityGraph,
       purpose: `Expansion lead (${lead.kind}): ${lead.query}\nReason: ${lead.reason}`,
-      results: results.filter((r) => !visited.has(r.url)),
+      results: results.filter((r) => !visited.has(canonicalUrl(r.url))),
       max: maxFetches,
       scope: "expansion:select",
       pushWarning,
     });
 
     for (const url of urls) {
+      if (!claimUrl(state.runId, url)) continue;
       if (!tryConsume(state.runId, "fetch")) break;
-      visited.add(url);
+      visited.add(canonicalUrl(url));
       newUrls.push(url);
       const page = await withDegrade(
         () => fetch.fetchPage(url),
@@ -631,52 +740,20 @@ export async function planExpansion(
 
       const tier = tierForUrl(url, officialDomains);
       const { sourceId } = await saveSnapshot(state.runId, page, tier);
-
-      const extraction = await withDegrade(
-        () =>
-          llm.structured({
-            task: "extractFacts",
-            system: EXTRACT_SYSTEM,
-            prompt: [
-              anchorPacket(anchor, state.entityGraph),
-              `## Lead: ${lead.reason}`,
-              ...(tier >= 4 ? [TIER4_EXTRACT_NOTE] : []),
-              `## Page: ${page.url}`,
-              page.markdown.slice(0, 12000),
-            ].join("\n\n"),
-            schema: extractedFactsSchema,
-            context: { page, anchor },
-          }),
-        { facts: [] },
-        "expansion:extract",
-        pushWarning,
-      );
-
-      const { stored } = await storeExtractedFacts({
-        runId: state.runId,
-        placeId: state.placeId,
-        sourceId,
+      const stored = await extractAndStore({
+        llm,
+        state,
+        page,
         tier,
-        pageMarkdown: page.markdown,
-        extracted: extraction.facts,
+        sourceId,
+        contextLines: [`## Lead: ${lead.reason}`],
+        scope: "expansion",
         round,
+        emit,
+        pushWarning,
       });
       storedFacts.push(...stored);
       if (tier >= 4) leadHints.push(...stored.map((f) => f.claim));
-      for (const fact of stored) {
-        emit({
-          type: "fact_added",
-          fact: {
-            id: fact.id,
-            category: fact.category,
-            claim: fact.claim,
-            quote: fact.quote,
-            sourceId: fact.sourceId,
-            tier: fact.tier,
-            asOfDate: fact.asOfDate,
-          },
-        });
-      }
     }
   }
 
@@ -749,6 +826,8 @@ export async function verify(
           "for the anchored department ('supported' / 'unsupported'). Also mark " +
           "'unsupported' any fact that carries no sales value at all: identity or " +
           "directory confirmations, record IDs, notes about what a website lacks. " +
+          "Small-but-real data is NOT valueless: a modest grant, a single contact " +
+          "number, or one old truck still counts; when in doubt, keep the fact. " +
           "2) Group DUPLICATES aggressively, across categories. Two facts are " +
           "duplicates whenever a reader learns nothing new from the second one: " +
           "identical statements, rewordings, the same datum from different sources, " +

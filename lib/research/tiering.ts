@@ -35,6 +35,28 @@ const T2_PATTERNS = [
   /firenews\.com/,
 ];
 
+/**
+ * National fire-department directories and listing aggregators: often years
+ * stale, never authoritative, but their hostnames ("usfiredept") would
+ * otherwise trip the official-site hints below and win conflicts they
+ * should lose (observed: a stale directory beat the current station count).
+ */
+const T3_DIRECTORY_PATTERNS = [
+  /usfiredept\.com/,
+  /usfirepolice\.net/,
+  /firenews\.org/,
+  /firedepartment\.net/,
+  /digitalfirehouse\.com/,
+  /ciclt\.net/,
+  /mapquest\.com/,
+  /yellowpages\.com/,
+  /yelp\.com/,
+  /local\.yahoo\.com/,
+  /manta\.com/,
+  /nicelocal\.com/,
+  /chamberofcommerce\.com/,
+];
+
 const T4_PATTERNS = [
   /fandom\.com/,
   /stationboss\.com/,
@@ -62,6 +84,8 @@ export function tierForUrl(url: string, officialDomains: string[] = []): number 
   const full = url.toLowerCase();
 
   if (officialDomains.some((d) => host === d || host.endsWith(`.${d}`))) return 1;
+  // Directories outrank the T1 checks: their hostnames imitate official sites.
+  if (T3_DIRECTORY_PATTERNS.some((p) => p.test(full))) return 3;
   if (T1_PATTERNS.some((p) => p.test(full))) return 1;
   if (T4_PATTERNS.some((p) => p.test(full))) return 4;
   if (T2_PATTERNS.some((p) => p.test(full))) return 2;

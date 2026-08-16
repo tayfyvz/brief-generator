@@ -10,6 +10,7 @@ interface RunBudget {
   searches: number;
   fetches: number;
   capsHit: Set<string>;
+  claimedUrls: Set<string>;
 }
 
 const budgets = new Map<string, RunBudget>();
@@ -17,7 +18,7 @@ const budgets = new Map<string, RunBudget>();
 function budgetFor(runId: string): RunBudget {
   let b = budgets.get(runId);
   if (!b) {
-    b = { searches: 0, fetches: 0, capsHit: new Set() };
+    b = { searches: 0, fetches: 0, capsHit: new Set(), claimedUrls: new Set() };
     budgets.set(runId, b);
   }
   return b;
@@ -62,6 +63,37 @@ export function hasBudget(runId: string): boolean {
   const env = getEnv();
   const b = budgetFor(runId);
   return b.searches < env.MAX_SEARCHES_PER_RUN && b.fetches < env.MAX_FETCHES_PER_RUN;
+}
+
+/**
+ * Canonical URL form for fetch dedupe: trailing slashes, fragments, and
+ * host casing must not buy the same page twice (observed: ctownfire.org
+ * fetched once with and once without the trailing slash).
+ */
+export function canonicalUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.hash = "";
+    u.hostname = u.hostname.toLowerCase();
+    let s = u.toString();
+    if (s.endsWith("/")) s = s.slice(0, -1);
+    return s;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Synchronous per-run URL claim: parallel tracks cannot see each other's
+ * graph state mid-superstep, so without this the same page is fetched (and
+ * budgeted) once per track. First caller wins; later callers skip the URL.
+ */
+export function claimUrl(runId: string, url: string): boolean {
+  const claimed = budgetFor(runId).claimedUrls;
+  const key = canonicalUrl(url);
+  if (claimed.has(key)) return false;
+  claimed.add(key);
+  return true;
 }
 
 export function recordCap(runId: string, cap: string): void {

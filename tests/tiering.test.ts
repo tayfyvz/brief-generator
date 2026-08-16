@@ -32,4 +32,12 @@ describe("tierForUrl", () => {
     expect(tierForUrl("https://hudsoncountyview.com/article")).toBe(3);
     expect(tierForUrl("not a url")).toBe(4);
   });
+
+  it("tiers stale national directories at 3 despite fire-dept hostnames", () => {
+    expect(tierForUrl("https://usfiredept.com/lexington-volunteer-fire-department-13086.html")).toBe(3);
+    expect(tierForUrl("https://www.usfirepolice.net/md_maryland/md_wise_avenue.html")).toBe(3);
+    expect(tierForUrl("https://www.firenews.org/vt/w/washington/washingtonvt.html")).toBe(3);
+    expect(tierForUrl("https://digitalfirehouse.com/info/vt/orange/washington.htm")).toBe(3);
+    expect(tierForUrl("https://www.mapquest.com/us/indiana/lexington-vfd-290339041")).toBe(3);
+  });
 });

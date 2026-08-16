@@ -116,7 +116,14 @@ class FirecrawlClient implements FetchClient {
     }
     const parsed = firecrawlResponseSchema.parse(await res.json());
     const markdown = parsed.data?.markdown?.trim();
+    // Near-empty markdown (< 200 chars) means the scrape hit a login wall,
+    // a JS shell, or a redirect stub; the direct fetcher sometimes does
+    // better on exactly those municipal pages. Keep the longer of the two.
     if (!parsed.success || !markdown) return directFetch(url);
+    if (markdown.length < 200) {
+      const direct = await directFetch(url).catch(() => null);
+      if (direct && direct.markdown.length > markdown.length) return direct;
+    }
     return fetchedPageSchema.parse({
       url,
       title: parsed.data?.metadata?.title,

@@ -12,15 +12,24 @@ citable but render as unconfirmed community data and are superseded whenever
 a tier 1-3 source carries the same datum):
 
 **Tier 1; authoritative:** the department's own site; municipal/county sites;
-state procurement portals; budgets, audits, CAFRs, bond ordinances; council
-agendas & minutes (ecode360, Granicus, CivicClerk); federal appropriations
-tables; FEMA AFG/SAFER award lists; the USFA fire department registry.
+city council and town board agendas & minutes (ecode360, Granicus, CivicClerk);
+township trustee and select board pages; annual town reports; county
+commissioners and county EMA pages; state transparency and budget portals
+(e.g. Indiana Gateway, state comptroller sites); state fire marshal pages;
+state procurement portals; budgets, audits, CAFRs, bond ordinances; federal
+appropriations tables; FEMA AFG/SAFER award lists; the USFA fire department
+registry. Council/city/county documents are gold: they record apparatus
+purchase approvals, loan authorizations, and fire budget lines that never
+appear on the department's own site.
 
 **Tier 2; industry:** manufacturer new-delivery pages (Pierce, Ferrara,
 E-ONE, Sutphen, Seagrave, Rosenbauer...); regional dealer delivery pages;
 Fire Apparatus Magazine; Firehouse.com.
 
-**Tier 3; local press:** local news sites, county/regional outlets.
+**Tier 3; local press & directories:** local news sites, county/regional
+outlets; national fire-department directories (usfiredept.com, firenews.org
+and similar) are also tier 3 and often YEARS stale; never trust a directory
+over a fresher source.
 
 **Tier 4; community:** fire.fandom.com, stationboss, YouTube, Facebook,
 forums, enthusiast photo sites. For small volunteer departments these often
