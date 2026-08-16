@@ -7,6 +7,7 @@ import { anchorPacket } from "@/lib/llm/prompts/anchor";
 import { SOURCE_PLAYBOOK } from "@/lib/llm/prompts/playbook";
 import { saveSnapshot } from "@/lib/research/snapshots";
 import { quoteAppearsIn, storeExtractedFacts } from "@/lib/research/facts";
+import { anchorTerms, extractionSlice } from "@/lib/research/markdown";
 import { tierForUrl } from "@/lib/research/tiering";
 import { getFetchClient } from "@/lib/tools/firecrawl";
 import { getPlacesClient } from "@/lib/tools/places";
@@ -250,6 +251,10 @@ const EXTRACT_SYSTEM = [
   "Every fact needs a claim plus a VERBATIM quote: one contiguous span copied",
   "character-for-character from the page text. No paraphrasing, no stitching",
   "separate sentences together, no fixing typos. Facts with inexact quotes are dropped.",
+  "The quote must CONTAIN the decisive datum the claim asserts: the number,",
+  "name, or date itself, never just its label. On form or table pages quote",
+  "the full row or line that holds the value, value included ('Total revenue",
+  "| 9 | 86,777', not 'Total revenue').",
   "If the page is about a similarly-named department in a different city, county,",
   "or state than the anchor, return an EMPTY facts list. Wrong-department",
   "contamination is worse than no facts.",
@@ -324,7 +329,9 @@ const QUOTE_REPAIR_NOTE = [
   "because its quote was not found verbatim in the page text. Re-emit every",
   "fact the page genuinely supports with a corrected quote: one contiguous",
   "span copied character-for-character from the page text below, including",
-  "any markdown pipes, brackets, or asterisks that appear mid-span. Keep",
+  "any markdown pipes, brackets, or asterisks that appear mid-span. Each",
+  "corrected quote must contain the decisive number, name, or date the claim",
+  "asserts, not just its label; on table rows quote the whole row. Keep",
   "claims unchanged unless the page contradicts them. Omit facts the page",
   "does not actually support. Do not add new facts.",
 ].join("\n");
@@ -366,7 +373,7 @@ async function extractAndStore(opts: {
       ...(tier >= 4 ? [TIER4_EXTRACT_NOTE] : []),
       ...extra,
       `## Page: ${page.url}`,
-      page.markdown.slice(0, 12000),
+      extractionSlice(page.markdown, anchorTerms(state.anchor!)),
     ].join("\n\n");
 
   const extraction = await withDegrade(
@@ -828,6 +835,9 @@ export async function verify(
           "directory confirmations, record IDs, notes about what a website lacks. " +
           "Small-but-real data is NOT valueless: a modest grant, a single contact " +
           "number, or one old truck still counts; when in doubt, keep the fact. " +
+          "Who signs the purchase order IS sales data: legal/contracting entity, " +
+          "incorporation status, budget owner, and finances (revenue, assets, fund " +
+          "balances) are never identity trivia; keep them. " +
           "2) Group DUPLICATES aggressively, across categories. Two facts are " +
           "duplicates whenever a reader learns nothing new from the second one: " +
           "identical statements, rewordings, the same datum from different sources, " +
@@ -840,7 +850,10 @@ export async function verify(
           "3) List genuine CONFLICTS: facts that cannot all be true (two different " +
           "chiefs, two different years for the same unit). Resolve each by source tier " +
           "(T1 beats T3) then recency, name the winner in the note, and never silently " +
-          "drop a side. Keep every note you write under 15 words, direct and plain. " +
+          "drop a side. Exception: national directory listings are often years stale, " +
+          "so a dated fact from ANY source beats an undated directory datum, tier " +
+          "notwithstanding. A dated fact that a person left a role beats an older " +
+          "fact that they held it. Keep every note you write under 15 words, direct and plain. " +
           "If a group of facts agrees, it is not a conflict. " +
           "Tier-4 facts come from community sources (wikis, social media): when a " +
           "tier 1-3 fact carries the same datum, the tier-4 fact is the duplicate to " +

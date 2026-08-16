@@ -20,7 +20,12 @@ state procurement portals; budgets, audits, CAFRs, bond ordinances; federal
 appropriations tables; FEMA AFG/SAFER award lists; the USFA fire department
 registry. Council/city/county documents are gold: they record apparatus
 purchase approvals, loan authorizations, and fire budget lines that never
-appear on the department's own site.
+appear on the department's own site. On state budget portals (Indiana
+Gateway, budgetnotices.in.gov and peers) look up the TOWNSHIP or fire
+district unit that actually funds the department; the county unit is
+mostly sheriff and highway lines. IRS Form 990 filings (ProPublica
+Nonprofit Explorer) reveal a volunteer department's revenue, fund balance,
+and legal purchasing entity.
 
 **Tier 2; industry:** manufacturer new-delivery pages (Pierce, Ferrara,
 E-ONE, Sutphen, Seagrave, Rosenbauer...); regional dealer delivery pages;

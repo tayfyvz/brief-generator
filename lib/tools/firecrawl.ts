@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import { getEnv } from "@/lib/env";
+import { cleanMarkdown } from "@/lib/research/markdown";
 import { fetchedPageSchema, type FetchedPage } from "@/lib/schemas/tools";
 import { FIXTURE_PAGES } from "./fixtures";
 
@@ -47,7 +48,7 @@ async function directFetch(url: string): Promise<FetchedPage | null> {
     return fetchedPageSchema.parse({
       url,
       title: parsed.info?.Title ?? undefined,
-      markdown: parsed.text.trim(),
+      markdown: cleanMarkdown(parsed.text),
     });
   }
 
@@ -62,7 +63,7 @@ async function directFetch(url: string): Promise<FetchedPage | null> {
     .replace(/\s{2,}/g, " ")
     .trim();
   if (!text) return null;
-  return fetchedPageSchema.parse({ url, title, markdown: text });
+  return fetchedPageSchema.parse({ url, title, markdown: cleanMarkdown(text) });
 }
 
 /**
@@ -115,7 +116,8 @@ class FirecrawlClient implements FetchClient {
       return directFetch(url);
     }
     const parsed = firecrawlResponseSchema.parse(await res.json());
-    const markdown = parsed.data?.markdown?.trim();
+    const raw = parsed.data?.markdown?.trim();
+    const markdown = raw ? cleanMarkdown(raw) : raw;
     // Near-empty markdown (< 200 chars) means the scrape hit a login wall,
     // a JS shell, or a redirect stub; the direct fetcher sometimes does
     // better on exactly those municipal pages. Keep the longer of the two.

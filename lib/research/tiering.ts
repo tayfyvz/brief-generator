@@ -17,6 +17,8 @@ const T1_PATTERNS = [
   /fema\.gov/,
   /senate\.gov/,
   /house\.gov/,
+  // Republished primary IRS records (Form 990 filings), not journalism.
+  /projects\.propublica\.org\/nonprofits/,
 ];
 
 const T2_PATTERNS = [

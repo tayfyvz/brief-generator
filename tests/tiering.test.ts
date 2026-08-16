@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { tierForUrl } from "@/lib/research/tiering";
 
 describe("tierForUrl", () => {
+  it("marks ProPublica nonprofit filings T1 (republished IRS records)", () => {
+    expect(
+      tierForUrl("https://projects.propublica.org/nonprofits/organizations/237430862"),
+    ).toBe(1);
+    // ProPublica journalism stays local-press tier.
+    expect(tierForUrl("https://www.propublica.org/article/some-story")).toBe(3);
+  });
+
   it("marks government and civic-platform sources T1", () => {
     expect(tierForUrl("https://www.weehawken-nj.us/budget.pdf")).toBe(1);
     expect(tierForUrl("https://ecode360.com/WE1234")).toBe(1);
