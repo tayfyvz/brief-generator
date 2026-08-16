@@ -33,6 +33,7 @@ import {
   getLatestRun,
   getRunWarnings,
 } from "@/lib/db/queries";
+import { DEPARTMENT_NAME_PENDING } from "@/lib/db/schema";
 import { getRunManager } from "@/lib/research/run-manager";
 import { getEnv } from "@/lib/env";
 import { placeIdSchema } from "@/lib/schemas/anchor";
@@ -43,7 +44,7 @@ import {
   type BriefContent,
   type BriefSectionKey,
 } from "@/lib/schemas/brief";
-import { formatDate } from "@/lib/format";
+import { displayHost, formatDate } from "@/lib/format";
 import type { Warning } from "@/lib/schemas/tools";
 
 export const dynamic = "force-dynamic";
@@ -172,7 +173,9 @@ export default async function BriefPage({
     : [];
 
   const resolvedName =
-    department && department.name !== "(resolving…)" ? department.name : null;
+    department && department.name !== DEPARTMENT_NAME_PENDING
+      ? department.name
+      : null;
   const location = department
     ? [department.city, department.state].filter(Boolean).join(", ")
     : "";
@@ -265,7 +268,7 @@ export default async function BriefPage({
                   className="chip-hover inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium"
                 >
                   <Globe className="size-3.5 text-primary" />
-                  {new URL(department.website).hostname.replace(/^www\./, "")}
+                  {displayHost(department.website)}
                 </a>
               )}
               {copyText && <CopyBriefButton text={copyText} />}

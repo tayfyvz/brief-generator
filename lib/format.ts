@@ -21,6 +21,15 @@ export function formatDate(iso: string | null | undefined): string | null {
   });
 }
 
+/** Display form of a URL's host ("www." stripped); the raw string if unparsable. */
+export function displayHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
 export type Freshness = "fresh" | "aging" | "stale";
 
 /** How recently a brief was researched; thresholds match the AE's cadence. */

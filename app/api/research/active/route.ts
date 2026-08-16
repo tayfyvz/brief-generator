@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRunManager } from "@/lib/research/run-manager";
 import { getDepartment } from "@/lib/db/queries";
+import { DEPARTMENT_NAME_PENDING } from "@/lib/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,9 @@ export async function GET() {
     active.map(async ({ runId, placeId }) => {
       const department = await getDepartment(placeId).catch(() => null);
       const name =
-        department && department.name !== "(resolving…)" ? department.name : null;
+        department && department.name !== DEPARTMENT_NAME_PENDING
+          ? department.name
+          : null;
       return { runId, placeId, name };
     }),
   );

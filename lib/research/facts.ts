@@ -58,10 +58,6 @@ export function makeQuoteMatcher(markdown: string): (quote: string) => boolean {
   };
 }
 
-export function quoteAppearsIn(quote: string, markdown: string): boolean {
-  return makeQuoteMatcher(markdown)(quote);
-}
-
 /**
  * Per-run registry of stored quotes. Parallel tracks extract from the same
  * pages and cannot see each other's state mid-superstep, so cross-track fact

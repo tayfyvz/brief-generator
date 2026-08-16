@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/test";
 
-const { quoteAppearsIn } = await import("@/lib/research/facts");
+const { makeQuoteMatcher } = await import("@/lib/research/facts");
+
+const quoteAppearsIn = (quote: string, page: string) =>
+  makeQuoteMatcher(page)(quote);
 
 describe("quoteAppearsIn", () => {
   it("matches exact spans, whitespace-insensitively", () => {

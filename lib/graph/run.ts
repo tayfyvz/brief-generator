@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { departments, researchRuns } from "@/lib/db/schema";
+import {
+  DEPARTMENT_NAME_PENDING,
+  departments,
+  researchRuns,
+} from "@/lib/db/schema";
 import { buildResearchGraph } from "./build";
 import { getCheckpointer } from "./checkpointer";
 import { releaseRunQuotes } from "@/lib/research/facts";
@@ -22,7 +26,7 @@ export async function createRunRow(placeId: string): Promise<string> {
   const db = getDb();
   await db
     .insert(departments)
-    .values({ placeId, name: "(resolving…)" })
+    .values({ placeId, name: DEPARTMENT_NAME_PENDING })
     .onConflictDoNothing();
   const [run] = await db
     .insert(researchRuns)

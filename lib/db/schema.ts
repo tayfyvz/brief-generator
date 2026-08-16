@@ -23,6 +23,9 @@ const tsvector = customType<{ data: string }>({
   },
 });
 
+/** Name of a department row created before its Places anchor resolves. */
+export const DEPARTMENT_NAME_PENDING = "(resolving…)";
+
 export const departments = pgTable("departments", {
   placeId: text("place_id").primaryKey(),
   name: text("name").notNull(),

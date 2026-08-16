@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { formatDate, TIER_LABELS } from "@/lib/format";
+import { displayHost, formatDate, TIER_LABELS } from "@/lib/format";
 import type { facts, sources } from "@/lib/db/schema";
 
 export type FactRow = typeof facts.$inferSelect;
@@ -67,13 +67,7 @@ export function CitationChip({
   fact: Pick<FactRow, "quote">;
   source: SourceRow;
 }) {
-  const host = (() => {
-    try {
-      return new URL(source.url).hostname.replace(/^www\./, "");
-    } catch {
-      return source.url;
-    }
-  })();
+  const host = displayHost(source.url);
   return (
     <Popover>
       <PopoverTrigger asChild>

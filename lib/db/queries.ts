@@ -25,24 +25,6 @@ export async function upsertDepartment(anchor: Anchor) {
     .onConflictDoUpdate({ target: departments.placeId, set: row });
 }
 
-export async function getRecentBriefs(limit = 8) {
-  const db = getDb();
-  return db
-    .select({
-      placeId: briefs.placeId,
-      createdAt: briefs.createdAt,
-      name: departments.name,
-      city: departments.city,
-      state: departments.state,
-    })
-    .from(briefs)
-    .innerJoin(departments, eq(briefs.placeId, departments.placeId))
-    // Integration-test departments must never surface in the product UI.
-    .where(notLike(briefs.placeId, "Test%"))
-    .orderBy(desc(briefs.createdAt))
-    .limit(limit);
-}
-
 /** Library visibility plus an optional free-text filter on name/city/state. */
 function libraryWhere(q?: string) {
   // Integration-test departments must never surface in the product UI.
@@ -58,6 +40,23 @@ function libraryWhere(q?: string) {
       ilike(departments.state, pattern),
     ),
   );
+}
+
+/** Newest briefs for the home page. */
+export async function getRecentBriefs(limit = 8) {
+  return getDb()
+    .select({
+      placeId: briefs.placeId,
+      createdAt: briefs.createdAt,
+      name: departments.name,
+      city: departments.city,
+      state: departments.state,
+    })
+    .from(briefs)
+    .innerJoin(departments, eq(briefs.placeId, departments.placeId))
+    .where(libraryWhere())
+    .orderBy(desc(briefs.createdAt))
+    .limit(limit);
 }
 
 /** Paginated brief library for the /briefs page. */
