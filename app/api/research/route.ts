@@ -67,6 +67,8 @@ export async function POST(req: Request) {
     const result = await manager.resume(resumeRunId);
     return NextResponse.json(result);
   }
-  const result = await manager.start(placeId!);
+  const fresh =
+    body !== null && typeof body === "object" && "fresh" in body && body.fresh === true;
+  const result = await manager.start(placeId!, { fresh });
   return NextResponse.json(result);
 }

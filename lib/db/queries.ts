@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, notInArray, notLike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, notInArray, notLike, or, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { briefs, departments, facts, researchRuns, runEvents, sources } from "./schema";
 import type { Anchor } from "@/lib/schemas/anchor";
@@ -108,6 +108,9 @@ export async function getBriefPageData(placeId: string) {
       sql`CASE ${facts.usefulness} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 3 ELSE 1 END`,
       sql`${facts.asOfDate} DESC NULLS LAST`,
     );
+  // Carried-forward facts cite source rows from earlier runs, so load
+  // sources by reference too, not just by this run's id.
+  const citedSourceIds = [...new Set(factRows.map((f) => f.sourceId))];
   const sourceRows = await db
     .select({
       id: sources.id,
@@ -120,7 +123,11 @@ export async function getBriefPageData(placeId: string) {
       publishedAt: sources.publishedAt,
     })
     .from(sources)
-    .where(eq(sources.runId, brief.runId));
+    .where(
+      citedSourceIds.length > 0
+        ? or(eq(sources.runId, brief.runId), inArray(sources.id, citedSourceIds))
+        : eq(sources.runId, brief.runId),
+    );
 
   return { department, brief, facts: factRows, sources: sourceRows };
 }

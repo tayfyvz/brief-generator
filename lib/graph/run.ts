@@ -4,7 +4,8 @@ import { departments, researchRuns } from "@/lib/db/schema";
 import { buildResearchGraph } from "./build";
 import { getCheckpointer } from "./checkpointer";
 import { releaseRunQuotes } from "@/lib/research/facts";
-import { capsHitFor, releaseBudget } from "@/lib/research/budget";
+import { carryForwardFacts } from "@/lib/research/carryforward";
+import { capsHitFor, claimUrl, releaseBudget } from "@/lib/research/budget";
 import type { EmitFn } from "@/lib/schemas/events";
 import type { ResearchStateType } from "./state";
 
@@ -41,8 +42,10 @@ export async function executeGraph(opts: {
   emit?: EmitFn;
   /** Resume an interrupted run from its checkpoint instead of starting fresh. */
   resume?: boolean;
+  /** Skip carrying forward the previous run's facts (default: carry). */
+  fresh?: boolean;
 }): Promise<RunResult> {
-  const { runId, placeId, resume } = opts;
+  const { runId, placeId, resume, fresh } = opts;
   const emit: EmitFn = opts.emit ?? (() => undefined);
   const db = getDb();
 
@@ -52,8 +55,42 @@ export async function executeGraph(opts: {
 
   try {
     emit({ type: "run_started", placeId });
+
+    // Reruns start from the previous run's kept facts so coverage only
+    // grows; the carried facts re-enter verify alongside fresh findings.
+    let carried: Awaited<ReturnType<typeof carryForwardFacts>> = {
+      facts: [],
+      urls: [],
+      fromRunId: null,
+    };
+    if (!resume && !fresh) {
+      carried = await carryForwardFacts(runId, placeId);
+      for (const url of carried.urls) claimUrl(runId, url);
+      for (const f of carried.facts) {
+        emit({
+          type: "fact_added",
+          fact: {
+            id: f.id,
+            category: f.category,
+            claim: f.claim,
+            quote: f.quote,
+            sourceId: f.sourceId,
+            tier: f.tier,
+            asOfDate: f.asOfDate,
+          },
+        });
+      }
+    }
+
     const finalState = (await graph.invoke(
-      resume ? null : { runId, placeId },
+      resume
+        ? null
+        : {
+            runId,
+            placeId,
+            facts: carried.facts,
+            visitedUrls: carried.urls,
+          },
       config,
     )) as ResearchStateType;
     const capsHit = capsHitFor(runId);

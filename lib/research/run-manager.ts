@@ -27,14 +27,17 @@ class RunManager {
   private byRun = new Map<string, ActiveRun>();
 
   /** Start research for a Place ID, or join the already-active run. */
-  async start(placeId: string): Promise<{ runId: string; joined: boolean }> {
+  async start(
+    placeId: string,
+    opts?: { fresh?: boolean },
+  ): Promise<{ runId: string; joined: boolean }> {
     const existing = this.byPlace.get(placeId);
     if (existing && !existing.finished) {
       return { runId: existing.runId, joined: true };
     }
     const runId = await createRunRow(placeId);
     const active = this.activate(runId, placeId, 0);
-    void this.execute(active, false);
+    void this.execute(active, false, opts?.fresh);
     return { runId, joined: false };
   }
 
@@ -126,12 +129,17 @@ class RunManager {
     active.emitter.emit("event", persisted);
   }
 
-  private async execute(active: ActiveRun, resume: boolean): Promise<void> {
+  private async execute(
+    active: ActiveRun,
+    resume: boolean,
+    fresh?: boolean,
+  ): Promise<void> {
     try {
       await executeGraph({
         runId: active.runId,
         placeId: active.placeId,
         resume,
+        fresh,
         emit: (event) => this.emit(active, event),
       });
     } catch (err) {
