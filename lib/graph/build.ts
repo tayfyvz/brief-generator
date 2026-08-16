@@ -10,8 +10,7 @@ import {
   synthesize,
   verify,
 } from "./nodes";
-import { TRACKS } from "./tracks";
-import type { TrackDef } from "./nodes";
+import { TRACKS, type TrackDef } from "./tracks";
 
 function track(key: string): TrackDef {
   const def = TRACKS.find((t) => t.key === key);

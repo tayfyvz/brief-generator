@@ -1,4 +1,16 @@
-import type { TrackDef } from "./nodes";
+import type { Anchor } from "@/lib/schemas/anchor";
+
+export interface TrackDef {
+  key: string;
+  title: string;
+  focus: string;
+  /**
+   * Deterministic queries run before the LLM-planned ones, for source types
+   * that reliably exist for every department (IRS 990s, "<town> fire chief"
+   * press) and should not depend on the planner thinking of them this time.
+   */
+  seedQueries?: (anchor: Anchor) => string[];
+}
 
 const place = (a: { city?: string; state?: string }) =>
   [a.city, a.state].filter(Boolean).join(" ");
