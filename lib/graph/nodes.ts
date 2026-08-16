@@ -872,6 +872,12 @@ export async function synthesize(
     usefulness: f.usefulness,
   }));
 
+  // Short aliases (F1, F2…) instead of raw UUIDs in the prompt: models
+  // truncate long opaque IDs, which silently emptied signals and curation
+  // when the invented-ID guard filtered the shortened forms out.
+  const aliasOf = new Map(factList.map((f, i) => [f.id, `F${i + 1}`]));
+  const idOfAlias = new Map(factList.map((f, i) => [`F${i + 1}`, f.id]));
+
   const emptyBrief = {
     summary:
       "Research completed but produced no verifiable, cited facts. Treat this brief as empty rather than authoritative.",
@@ -892,7 +898,8 @@ export async function synthesize(
                 "You write a one-page sales brief for a fire-apparatus account executive from verified, cited facts. " +
                 "The AE is non-technical and has thirty seconds; the whole brief must be readable in a few glances. " +
                 "Be DIRECT everywhere: no filler words, no full sentences where a fragment carries the datum. " +
-                "Only reference fact IDs you were given. Rank 'why call today' by sales relevance and recency. " +
+                "Reference facts ONLY by the exact short IDs you were given (F1, F2, ...), copied verbatim. " +
+                "Rank 'why call today' by sales relevance and recency. " +
                 "Signal headlines are telegraphic, under 10 words, concrete and actionable: dated events, " +
                 "dollar amounts, aging apparatus, awarded grants, open bids, leadership changes " +
                 "('$120,000 AFG grant awarded Mar 2025', not a sentence about it). " +
@@ -919,7 +926,7 @@ export async function synthesize(
                 "## Verified facts (id · category · usefulness · claim · as-of)",
                 ...factList.map(
                   (f) =>
-                    `- ${f.id} · ${f.category} · ${f.usefulness ?? "medium"} · ${f.claim}${f.asOfDate ? ` (as of ${f.asOfDate})` : ""}`,
+                    `- ${aliasOf.get(f.id)} · ${f.category} · ${f.usefulness ?? "medium"} · ${f.claim}${f.asOfDate ? ` (as of ${f.asOfDate})` : ""}`,
                 ),
                 "",
                 "Produce the brief: summary, top-3 'why call today' signals, curated fact ids per section, conflicts, honest caveats.",
@@ -932,9 +939,15 @@ export async function synthesize(
           (w) => warnings.push(w),
         );
 
-  // Never surface fact IDs the model invented.
+  if (process.env.DEBUG_SYNTH) {
+    console.log("RAW LLM BRIEF:", JSON.stringify(llmBrief, null, 2));
+  }
+  // Map aliases back to real IDs (raw IDs pass through untouched, so
+  // verify-produced conflicts and the stub still work), then drop anything
+  // the model invented.
   const knownIds = new Set(factList.map((f) => f.id));
-  const onlyKnown = (ids: string[]) => ids.filter((id) => knownIds.has(id));
+  const onlyKnown = (ids: string[]) =>
+    ids.map((id) => idOfAlias.get(id) ?? id).filter((id) => knownIds.has(id));
 
   // Code-enforced curation invariants (the prompt asks, this guarantees):
   // a section only holds facts of its own categories (no padding an empty
