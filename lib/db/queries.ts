@@ -92,6 +92,7 @@ export async function getBriefPins(q?: string) {
   return db
     .select({
       placeId: briefs.placeId,
+      createdAt: briefs.createdAt,
       name: departments.name,
       city: departments.city,
       state: departments.state,

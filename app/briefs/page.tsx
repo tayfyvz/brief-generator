@@ -11,7 +11,7 @@ import {
 import { BriefsMap } from "@/components/briefs-map";
 import { LibraryFilter } from "@/components/library-filter";
 import { getBriefLibrary, getBriefPins } from "@/lib/db/queries";
-import { relativeDays } from "@/lib/format";
+import { FRESHNESS_META, freshness, relativeDays } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -104,14 +104,35 @@ export default async function BriefsPage({
           </div>
         ) : (
           <div className="fade-up mt-8">
-            <BriefsMap pins={pins} />
-            {pins.length < total && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {total - pins.length} brief{total - pins.length === 1 ? "" : "s"}{" "}
-                without coordinates {total - pins.length === 1 ? "is" : "are"}{" "}
-                only in the list view.
+            <BriefsMap
+              pins={pins.map((p) => ({
+                ...p,
+                freshness: freshness(p.createdAt),
+                researched: relativeDays(p.createdAt),
+              }))}
+            />
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-xs text-muted-foreground">
+              <p className="flex flex-wrap items-center gap-3">
+                <span>Researched:</span>
+                {(["fresh", "aging", "stale"] as const).map((f) => (
+                  <span key={f} className="inline-flex items-center gap-1.5">
+                    <span
+                      aria-hidden
+                      className={cn("size-2 rounded-full", FRESHNESS_META[f].dotClass)}
+                    />
+                    {FRESHNESS_META[f].label}
+                  </span>
+                ))}
               </p>
-            )}
+              {pins.length < total && (
+                <p>
+                  {total - pins.length} brief
+                  {total - pins.length === 1 ? "" : "s"} without coordinates{" "}
+                  {total - pins.length === 1 ? "is" : "are"} only in the list
+                  view.
+                </p>
+              )}
+            </div>
           </div>
         )
       ) : rows.length === 0 ? (
@@ -143,7 +164,16 @@ export default async function BriefsPage({
                   </p>
                 )}
                 <p className="mt-auto flex items-center justify-between pt-3 text-xs text-muted-foreground">
-                  Researched {relativeDays(b.createdAt)}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        FRESHNESS_META[freshness(b.createdAt)].dotClass,
+                      )}
+                    />
+                    Researched {relativeDays(b.createdAt)}
+                  </span>
                   <ArrowRight className="size-3.5 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
                 </p>
               </Link>
