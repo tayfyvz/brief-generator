@@ -34,46 +34,45 @@ import {
 import { getRunManager } from "@/lib/research/run-manager";
 import { getEnv } from "@/lib/env";
 import { placeIdSchema } from "@/lib/schemas/anchor";
-import { briefContentSchema, type BriefContent } from "@/lib/schemas/brief";
+import {
+  MAX_CURATED_PER_SECTION,
+  SECTION_CATEGORIES,
+  briefContentSchema,
+  type BriefContent,
+  type BriefSectionKey,
+} from "@/lib/schemas/brief";
 import { formatDate } from "@/lib/format";
 import type { Warning } from "@/lib/schemas/tools";
 
 export const dynamic = "force-dynamic";
 
-const MAX_CURATED_PER_SECTION = 5;
-
 const SECTIONS: {
-  key: "leadership" | "fleet" | "money" | "news";
+  key: BriefSectionKey;
   title: string;
-  categories: string[];
   icon: typeof Users;
   emptyNote: string;
 }[] = [
   {
     key: "leadership",
     title: "Who to call",
-    categories: ["leadership"],
     icon: Users,
     emptyNote: "No verified leadership or contact information found in this run.",
   },
   {
     key: "fleet",
     title: "What they drive",
-    categories: ["fleet"],
     icon: Truck,
     emptyNote: "No verified apparatus information found in this run.",
   },
   {
     key: "money",
     title: "Money moving",
-    categories: ["procurement", "funding"],
     icon: Banknote,
     emptyNote: "No verified budget, grant, or procurement activity found in this run.",
   },
   {
     key: "news",
     title: "Recent signals",
-    categories: ["news"],
     icon: Newspaper,
     emptyNote: "No verified recent news found in this run.",
   },
@@ -136,15 +135,16 @@ export default async function BriefPage({
   // one section, and curated picks stay short.
   const usedIds = new Set<string>();
   const sectionData = SECTIONS.map((section) => {
+    const categories = SECTION_CATEGORIES[section.key];
     const curated = (content?.curatedFactIds[section.key] ?? [])
       .map((id) => factById.get(id))
       .filter((f): f is FactRow => Boolean(f))
-      .filter((f) => section.categories.includes(f.category))
+      .filter((f) => categories.includes(f.category))
       .filter((f) => !usedIds.has(f.id) && (usedIds.add(f.id), true))
       .slice(0, MAX_CURATED_PER_SECTION);
     const curatedIds = new Set(curated.map((f) => f.id));
     const rest = facts.filter(
-      (f) => section.categories.includes(f.category) && !curatedIds.has(f.id),
+      (f) => categories.includes(f.category) && !curatedIds.has(f.id),
     );
     return { ...section, curated, rest, count: curated.length + rest.length };
   });

@@ -19,11 +19,11 @@ export function ResearchController({
   researchedAt,
   activeRunId,
   interruptedRunId,
-  maxRounds = 4,
+  maxRounds,
 }: {
   placeId: string;
   hasBrief: boolean;
-  maxRounds?: number;
+  maxRounds: number;
   /** ISO datetime of the cached brief, if one exists. */
   researchedAt: string | null;
   /** A run already in flight for this place (join it on load). */

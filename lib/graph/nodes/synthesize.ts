@@ -4,7 +4,11 @@ import { getLlmClient } from "@/lib/llm/client";
 import { anchorPacket } from "@/lib/llm/prompts/anchor";
 import { SYNTHESIZE_SYSTEM } from "@/lib/llm/prompts/synthesize";
 import { withDegrade } from "@/lib/tools/retry";
-import { briefContentSchema } from "@/lib/schemas/brief";
+import {
+  MAX_CURATED_PER_SECTION,
+  SECTION_CATEGORIES,
+  briefContentSchema,
+} from "@/lib/schemas/brief";
 import { llmBriefSchema } from "@/lib/schemas/llm";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { Warning } from "@/lib/schemas/tools";
@@ -82,19 +86,8 @@ export async function synthesize(
     ids.map((id) => idOfAlias.get(id) ?? id).filter((id) => knownIds.has(id));
 
   // Code-enforced curation invariants (the prompt asks, this guarantees):
-  // a section only holds facts of its own categories (no padding an empty
-  // fleet section with staffing trivia), each fact renders in at most one
-  // section, and sections stay short.
-  const MAX_CURATED_PER_SECTION = 5;
-  const SECTION_CATEGORIES: Record<
-    "leadership" | "fleet" | "money" | "news",
-    string[]
-  > = {
-    leadership: ["leadership"],
-    fleet: ["fleet"],
-    money: ["procurement", "funding"],
-    news: ["news"],
-  };
+  // a section only holds facts of its own categories, each fact renders in
+  // at most one section, and sections stay short.
   const categoryById = new Map(factList.map((f) => [f.id, f.category]));
   const usedIds = new Set<string>();
   const curateSection = (key: keyof typeof SECTION_CATEGORIES) =>

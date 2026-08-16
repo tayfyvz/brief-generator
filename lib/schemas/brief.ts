@@ -15,6 +15,19 @@ export const briefSectionKeySchema = z.enum([
 ]);
 export type BriefSectionKey = z.infer<typeof briefSectionKeySchema>;
 
+/**
+ * Fact categories each section may render; enforced at synthesis and again
+ * at render time so a section is never padded with another category's facts.
+ */
+export const SECTION_CATEGORIES: Record<BriefSectionKey, string[]> = {
+  leadership: ["leadership"],
+  fleet: ["fleet"],
+  money: ["procurement", "funding"],
+  news: ["news"],
+};
+
+export const MAX_CURATED_PER_SECTION = 5;
+
 /** A ranked, dated "why call today" signal; the 10-second read. */
 export const briefSignalSchema = z.object({
   headline: z.string().min(1),
