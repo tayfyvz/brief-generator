@@ -18,7 +18,9 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV HOSTNAME=0.0.0.0
+# Dual-stack wildcard: Railway healthchecks/private networking are IPv6-only,
+# and :: still accepts IPv4 on Linux.
+ENV HOSTNAME=::
 ENV PORT=3000
 
 RUN addgroup -S app && adduser -S app -G app
