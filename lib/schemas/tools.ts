@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 
 /** One web-search hit, normalized across Tavily/Exa. */
 export const searchResultSchema = z.object({

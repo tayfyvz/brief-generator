@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 
 /**
  * The disambiguation anchor (PLAN §3 N0): what Google Places tells us about

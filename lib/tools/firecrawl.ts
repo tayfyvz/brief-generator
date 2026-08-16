@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import { getEnv } from "@/lib/env";
 import { fetchedPageSchema, type FetchedPage } from "@/lib/schemas/tools";
 import { FIXTURE_PAGES } from "./fixtures";

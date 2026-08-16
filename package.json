@@ -11,9 +11,13 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "node --env-file=.env --import tsx lib/db/seed.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "graph:dev": "node --env-file=.env --import tsx scripts/dev-run.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "@langchain/core": "^1.2.8",
+    "@langchain/langgraph": "^1.4.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",

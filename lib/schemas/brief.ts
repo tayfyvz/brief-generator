@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 
 /**
  * Brief content (briefs.content JSONB). The brief references facts by id;

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import { getEnv } from "@/lib/env";
 import { anchorSchema, type Anchor } from "@/lib/schemas/anchor";
 
