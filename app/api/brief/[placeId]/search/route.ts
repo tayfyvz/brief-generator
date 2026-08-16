@@ -43,7 +43,7 @@ export async function GET(
            ts_headline('english', f.quote, ${query}, 'StartSel=⟦, StopSel=⟧') AS quote
     FROM facts f
     WHERE f.run_id = ${brief.runId}
-      AND (f.verification IS NULL OR f.verification != 'rejected')
+      AND (f.verification IS NULL OR f.verification NOT IN ('rejected', 'duplicate'))
       AND f.search_vec @@ ${query}
     ORDER BY ts_rank(f.search_vec, ${query}) DESC
     LIMIT 20

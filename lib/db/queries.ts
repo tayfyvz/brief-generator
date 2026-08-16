@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, notInArray, notLike, or, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { briefs, departments, facts, researchRuns, runEvents, sources } from "./schema";
 import type { Anchor } from "@/lib/schemas/anchor";
@@ -37,6 +37,8 @@ export async function getRecentBriefs(limit = 8) {
     })
     .from(briefs)
     .innerJoin(departments, eq(briefs.placeId, departments.placeId))
+    // Integration-test departments must never surface in the product UI.
+    .where(notLike(briefs.placeId, "Test%"))
     .orderBy(desc(briefs.createdAt))
     .limit(limit);
 }
@@ -62,7 +64,7 @@ export async function getLatestRun(placeId: string) {
   return rows[0] ?? null;
 }
 
-/** Warnings persisted during a run — rendered as honest research notes. */
+/** Warnings persisted during a run; rendered as honest research notes. */
 export async function getRunWarnings(runId: string): Promise<Warning[]> {
   const rows = await getDb()
     .select({ payload: runEvents.payload })
@@ -86,16 +88,25 @@ export async function getBriefPageData(placeId: string) {
   const brief = briefRows[0] ?? null;
   if (!brief) return { department, brief: null, facts: [], sources: [] };
 
-  // Rejected facts are never shown (PLAN hard rule) — everything else is,
-  // with its verification state rendered honestly.
+  // Rejected facts are never shown (PLAN hard rule); duplicates are hidden
+  // because their kept fact renders instead. Everything else is shown with
+  // its verification state rendered honestly. Usefulness sorts high first
+  // (nulls with medium), then source tier, then recency.
   const factRows = await db
     .select()
     .from(facts)
     .where(
       and(
         eq(facts.runId, brief.runId),
-        or(isNull(facts.verification), ne(facts.verification, "rejected")),
+        or(
+          isNull(facts.verification),
+          notInArray(facts.verification, ["rejected", "duplicate"]),
+        ),
       ),
+    )
+    .orderBy(
+      sql`CASE ${facts.usefulness} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 3 ELSE 1 END`,
+      sql`${facts.asOfDate} DESC NULLS LAST`,
     );
   const sourceRows = await db
     .select({

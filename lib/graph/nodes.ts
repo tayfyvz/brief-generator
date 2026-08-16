@@ -21,10 +21,12 @@ import {
   entityGraphSchema,
   expansionPlanSchema,
   extractedFactsSchema,
+  extractedLeadsSchema,
   llmBriefSchema,
   trackPlanSchema,
   verifyVerdictsSchema,
 } from "@/lib/schemas/llm";
+import { applyVerifyVerdicts } from "@/lib/research/verdicts";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { EmitFn } from "@/lib/schemas/events";
 import type { FetchedPage, Warning } from "@/lib/schemas/tools";
@@ -38,7 +40,7 @@ function emitterOf(config?: LangGraphRunnableConfig): EmitFn {
   return emit ?? (() => undefined);
 }
 
-/** N0 — deterministic Places lookup; anchors every later prompt. */
+/** N0; deterministic Places lookup; anchors every later prompt. */
 export async function resolveAnchor(
   state: ResearchStateType,
   config?: LangGraphRunnableConfig,
@@ -54,7 +56,7 @@ export async function resolveAnchor(
   return { anchor };
 }
 
-/** N1 — the keystone: who operates this station and who buys the trucks? */
+/** N1; the keystone: who operates this station and who buys the trucks? */
 export async function resolveEntity(
   state: ResearchStateType,
   config?: LangGraphRunnableConfig,
@@ -143,8 +145,63 @@ export interface TrackDef {
 
 const MAX_QUERIES_PER_TRACK = 3;
 const MAX_FETCHES_PER_QUERY = 2;
+/** Web-sparse departments get one extra fetch per query in expansion rounds. */
+const SPARSE_FACT_THRESHOLD = 15;
 
-/** N2 — one research track: plan queries → search → fetch → extract facts. */
+/**
+ * Shared system prompt for fact extraction (tracks and expansion). The rubric
+ * is the relevance gate: it decides what an AE sees, so it errs toward
+ * dropping trivia rather than keeping it.
+ */
+const EXTRACT_SYSTEM = [
+  "You extract sales-relevant facts about ONE fire department from ONE page,",
+  "for an account executive who sells fire apparatus.",
+  "Every fact needs a claim plus a VERBATIM quote: one contiguous span copied",
+  "character-for-character from the page text. No paraphrasing, no stitching",
+  "separate sentences together, no fixing typos. Facts with inexact quotes are dropped.",
+  "If the page is about a similarly-named department in a different city, county,",
+  "or state than the anchor, return an EMPTY facts list. Wrong-department",
+  "contamination is worse than no facts.",
+  "",
+  "Extract ONLY what could matter on a sales call:",
+  "current apparatus (unit, year, make, model, specs) and its age; planned or",
+  "recent purchases, refurbishments, and retirements; open bids, RFPs, and dealer",
+  "relationships; budgets, grants, loans, and fundraising capacity with amounts",
+  "and dates; who runs the department and who signs purchases, with contact info",
+  "beyond what the anchor already shows; recent news that gives a reason to call.",
+  "",
+  "Do NOT extract:",
+  "the address, phone, or website already listed in the anchor;",
+  "mission statements, mottos, or service descriptions;",
+  "membership requirements, recruiting logistics, or training benefits;",
+  "community event logistics (parades, Santa runs, holiday displays), unless the",
+  "event demonstrably raises money, then extract the fundraising angle only;",
+  "department history from before roughly 2012, unless that apparatus is still",
+  "in service today or the history directly informs a replacement cycle.",
+  "",
+  "Set usefulness per fact: high = changes what the AE says on this call",
+  "(current fleet and its age, money in motion, open bids, decision makers);",
+  "medium = helpful background (buying process, staffing model, service area);",
+  "low = context only. When in doubt between extracting a low-value fact and",
+  "skipping it, skip it.",
+  "",
+  "Write claims as plain, direct sentences. Never use em dashes or en dashes",
+  "in any text you write.",
+].join("\n");
+
+/** Lead mining for tier-4 pages (social media, wikis): hints, never citations. */
+const EXTRACT_LEADS_SYSTEM = [
+  "You mine an untrusted page (social media, fan wiki, forum) about ONE fire",
+  "department for research leads. The page can never be cited, but it often",
+  "names things worth verifying against official sources: apparatus unit",
+  "numbers and years, makes and models, chief and officer names, station",
+  "projects, deliveries, retirements, fundraising drives.",
+  "Return each as one short hint sentence. Only include hints about the",
+  "anchored department; skip anything about other departments. Return an empty",
+  "list when the page has nothing sales-relevant. Never use em dashes.",
+].join("\n");
+
+/** N2; one research track: plan queries → search → fetch → extract facts. */
 export function makeTrackNode(track: TrackDef) {
   return async function trackNode(
     state: ResearchStateType,
@@ -180,7 +237,7 @@ export function makeTrackNode(track: TrackDef) {
           system:
             "You plan web searches for one research track of a fire-department sales brief. " +
             "Return focused queries an analyst would run. Every query MUST include the " +
-            "department's city and state (add the county when useful) — many US departments " +
+            "department's city and state (add the county when useful); many US departments " +
             "share names, and an unqualified query surfaces the wrong one.",
           prompt: [
             anchorPacket(anchor, state.entityGraph),
@@ -205,6 +262,7 @@ export function makeTrackNode(track: TrackDef) {
     const visited = new Set(state.visitedUrls);
     const storedFacts: StoredFact[] = [];
     const newUrls: string[] = [];
+    const leadHints: string[] = [];
 
     let budgetExhausted = false;
     for (const query of queries) {
@@ -241,21 +299,38 @@ export function makeTrackNode(track: TrackDef) {
         const tier = tierForUrl(url, officialDomains);
         const { sourceId } = await saveSnapshot(state.runId, page, tier);
 
+        // Tier-4 pages are lead mines, never citations (PLAN §4): harvest
+        // hints for the expansion planner instead of extracting facts.
+        if (tier >= 4) {
+          const leads = await withDegrade(
+            () =>
+              llm.structured({
+                task: "extractLeads",
+                system: EXTRACT_LEADS_SYSTEM,
+                prompt: [
+                  anchorPacket(anchor, state.entityGraph),
+                  `## Page: ${page.url}`,
+                  page.markdown.slice(0, 8000),
+                ].join("\n\n"),
+                schema: extractedLeadsSchema,
+                context: { page, anchor },
+              }),
+            { hints: [] },
+            `track:${track.key}:leads`,
+            pushWarning,
+          );
+          leadHints.push(...leads.hints);
+          continue;
+        }
+
         const extraction = await withDegrade(
           () =>
             llm.structured({
               task: "extractFacts",
-              system:
-                "You extract sales-relevant facts about ONE fire department from ONE page. " +
-                "Every fact needs a claim plus a VERBATIM quote: one contiguous span copied " +
-                "character-for-character from the page text — no paraphrasing, no stitching " +
-                "separate sentences together, no fixing typos. Facts with inexact quotes are dropped. " +
-                "If the page is about a similarly-named department in a different city, county, " +
-                "or state than the anchor, return an EMPTY facts list — wrong-department " +
-                "contamination is worse than no facts.",
+              system: EXTRACT_SYSTEM,
               prompt: [
                 anchorPacket(anchor, state.entityGraph),
-                `## Track: ${track.title} — ${track.focus}`,
+                `## Track: ${track.title}: ${track.focus}`,
                 `## Page: ${page.url}`,
                 page.markdown.slice(0, 12000),
               ].join("\n\n"),
@@ -304,7 +379,7 @@ export function makeTrackNode(track: TrackDef) {
     if (budgetExhausted) {
       pushWarning({
         scope: `track:${track.key}:budget`,
-        message: "Run budget reached — track finished with what it had.",
+        message: "Run budget reached; track finished with what it had.",
       });
     }
     emit({
@@ -320,6 +395,7 @@ export function makeTrackNode(track: TrackDef) {
       warnings,
       searchedQueries: queries,
       visitedUrls: newUrls,
+      leadHints,
     };
   };
 }
@@ -327,7 +403,7 @@ export function makeTrackNode(track: TrackDef) {
 const MAX_LEADS_PER_ROUND = 5;
 
 /**
- * N3 ⟲ — expansion round: the planner turns discovered entities and facts
+ * N3 ⟲; expansion round: the planner turns discovered entities and facts
  * into new leads (keyword searches + Exa find-similar), executes them, and
  * extracts more facts. Loops until two dry rounds, the round cap, or the
  * run budget (see shouldContinueExpansion).
@@ -353,15 +429,17 @@ export async function planExpansion(
   const fetch = getFetchClient();
   const officialDomains = state.entityGraph?.officialDomains ?? [];
 
+  const sparse = state.facts.length < SPARSE_FACT_THRESHOLD;
   const plan = await withDegrade(
     () =>
       llm.structured({
         task: "planExpansion",
         system:
           "You plan the next research round for a fire-department sales brief. " +
-          "Turn discovered entities into leads: dealers → sibling delivery pages (kind 'similar'); " +
-          "member towns → budget PDFs and council minutes; legislators → appropriations; " +
-          "old apparatus → replacement-cycle queries. Then play completeness critic: " +
+          "Turn discovered entities into leads: dealers into sibling delivery pages (kind 'similar'); " +
+          "member towns into budget PDFs and council minutes; legislators into appropriations; " +
+          "old apparatus into replacement-cycle queries; tier-4 hints into verification " +
+          "queries against official and press sources. Then play completeness critic: " +
           "what would an AE ask that the facts still can't answer? Return no leads when " +
           "another round would not add sales-relevant facts.",
         prompt: [
@@ -370,6 +448,21 @@ export async function planExpansion(
           `## Round ${round} of ${getEnv().MAX_ROUNDS}`,
           "## Facts so far",
           ...state.facts.map((f) => `- [${f.category}] ${f.claim}`),
+          ...(state.leadHints.length > 0
+            ? [
+                "## Unverified hints from tier-4 sources (verify against tier 1-3, never cite directly)",
+                ...state.leadHints.map((h) => `- ${h}`),
+              ]
+            : []),
+          ...(sparse
+            ? [
+                "## Coverage note",
+                `Only ${state.facts.length} facts so far: this department is web-sparse. ` +
+                  "Go wider: county and township sites, town meeting minutes and budgets, " +
+                  "the state fire marshal or firefighter association, the USFA registry, " +
+                  "local newspapers, and the department's social media as lead sources.",
+              ]
+            : []),
           "## Queries already searched (do not repeat)",
           ...state.searchedQueries.map((q) => `- ${q}`),
         ].join("\n"),
@@ -390,12 +483,14 @@ export async function planExpansion(
   const storedFacts: StoredFact[] = [];
   const newQueries: string[] = [];
   const newUrls: string[] = [];
+  const leadHints: string[] = [];
+  const maxFetches = sparse ? MAX_FETCHES_PER_QUERY + 1 : MAX_FETCHES_PER_QUERY;
 
   for (const lead of leads) {
     if (!tryConsume(state.runId, "search")) break;
     newQueries.push(leadKey(lead.kind, lead.query));
     // A "similar" lead must carry a real URL; planners sometimes hand back
-    // prose — route those through semantic search instead of erroring.
+    // prose; route those through semantic search instead of erroring.
     const isUrl = (s: string) => {
       try {
         return Boolean(new URL(s));
@@ -417,7 +512,7 @@ export async function planExpansion(
     const urls = results
       .map((r) => r.url)
       .filter((u) => !visited.has(u))
-      .slice(0, MAX_FETCHES_PER_QUERY);
+      .slice(0, maxFetches);
 
     for (const url of urls) {
       if (!tryConsume(state.runId, "fetch")) break;
@@ -433,18 +528,34 @@ export async function planExpansion(
 
       const tier = tierForUrl(url, officialDomains);
       const { sourceId } = await saveSnapshot(state.runId, page, tier);
+
+      if (tier >= 4) {
+        const mined = await withDegrade(
+          () =>
+            llm.structured({
+              task: "extractLeads",
+              system: EXTRACT_LEADS_SYSTEM,
+              prompt: [
+                anchorPacket(anchor, state.entityGraph),
+                `## Page: ${page.url}`,
+                page.markdown.slice(0, 8000),
+              ].join("\n\n"),
+              schema: extractedLeadsSchema,
+              context: { page, anchor },
+            }),
+          { hints: [] },
+          "expansion:leads",
+          pushWarning,
+        );
+        leadHints.push(...mined.hints);
+        continue;
+      }
+
       const extraction = await withDegrade(
         () =>
           llm.structured({
             task: "extractFacts",
-            system:
-              "You extract sales-relevant facts about ONE fire department from ONE page. " +
-              "Every fact needs a claim plus a VERBATIM quote: one contiguous span copied " +
-                "character-for-character from the page text — no paraphrasing, no stitching " +
-                "separate sentences together, no fixing typos. Facts with inexact quotes are dropped. " +
-              "If the page is about a similarly-named department in a different city, county, " +
-                "or state than the anchor, return an EMPTY facts list — wrong-department " +
-                "contamination is worse than no facts.",
+            system: EXTRACT_SYSTEM,
             prompt: [
               anchorPacket(anchor, state.entityGraph),
               `## Lead: ${lead.reason}`,
@@ -494,6 +605,7 @@ export async function planExpansion(
     warnings,
     searchedQueries: newQueries,
     visitedUrls: newUrls,
+    leadHints,
   };
 }
 
@@ -517,7 +629,7 @@ export function shouldContinueExpansion(
 }
 
 /**
- * N4 — fresh-context verifier: does the verbatim quote actually support the
+ * N4; fresh-context verifier: does the verbatim quote actually support the
  * claim for THIS department? Conflicts are resolved by tier + recency and
  * surfaced in the brief; unsupported facts are marked rejected and never
  * shown; facts older than ~18 months get a staleness flag.
@@ -549,10 +661,18 @@ export async function verify(
         task: "verifyFacts",
         system:
           "You are a fresh-context verifier for a fire-department sales brief. " +
-          "For each fact, judge ONLY whether the verbatim quote supports the claim " +
-          "for the anchored department ('supported' / 'unsupported'). Then list facts " +
-          "that contradict each other; resolve each conflict by source tier (T1 beats T3) " +
-          "then recency, and name the winner in the note — never silently drop a side.",
+          "Three jobs, in order. " +
+          "1) For each fact, judge ONLY whether the verbatim quote supports the claim " +
+          "for the anchored department ('supported' / 'unsupported'). " +
+          "2) Group DUPLICATES: facts that state the same underlying information, even " +
+          "in different words or from different sources. Keep the single best fact per " +
+          "group (highest tier, then most specific, then most recent) as keepFactId and " +
+          "drop the rest. Restatements are duplicates, never conflicts. " +
+          "3) List genuine CONFLICTS: facts that cannot all be true (two different " +
+          "chiefs, two different years for the same unit). Resolve each by source tier " +
+          "(T1 beats T3) then recency, name the winner in the note, and never silently " +
+          "drop a side. If a group of facts agrees, it is not a conflict. " +
+          "Never use em dashes in any text you write.",
         prompt: [
           anchorPacket(anchor),
           "## Facts (id · tier · as-of · claim · quote)",
@@ -576,49 +696,45 @@ export async function verify(
     // dropping everything.
     {
       verdicts: factList.map((f) => ({ factId: f.id, verdict: "supported" as const })),
+      duplicates: [],
       conflicts: [],
     },
     "verify",
     pushWarning,
   );
 
-  const verdictById = new Map(verdicts.verdicts.map((v) => [v.factId, v.verdict]));
-  const knownIds = new Set(factList.map((f) => f.id));
-  const conflicts = verdicts.conflicts
-    .map((c) => ({ ...c, factIds: c.factIds.filter((id) => knownIds.has(id)) }))
-    .filter((c) => c.factIds.length >= 2);
-  const conflictedIds = new Set(conflicts.flatMap((c) => c.factIds));
-
-  const rejectedIds = factList
-    .filter((f) => verdictById.get(f.id) === "unsupported")
-    .map((f) => f.id);
-  const surviving = factList.filter((f) => verdictById.get(f.id) !== "unsupported");
-  const verifiedIds = surviving.filter((f) => !conflictedIds.has(f.id)).map((f) => f.id);
+  const applied = applyVerifyVerdicts(factList, verdicts);
   const now = new Date();
   const staleIds = factList.filter((f) => isStale(f.asOfDate, now)).map((f) => f.id);
 
   const db = getDb();
-  if (rejectedIds.length > 0) {
+  if (applied.rejectedIds.length > 0) {
     await db
       .update(factsTable)
       .set({ verification: "rejected" })
-      .where(inArray(factsTable.id, rejectedIds));
+      .where(inArray(factsTable.id, applied.rejectedIds));
     pushWarning({
       scope: "verify",
-      message: `${rejectedIds.length} fact(s) failed verification and were dropped from the brief.`,
+      message: `${applied.rejectedIds.length} fact(s) failed verification and were dropped from the brief.`,
     });
   }
-  if (conflictedIds.size > 0) {
+  if (applied.duplicateIds.length > 0) {
+    await db
+      .update(factsTable)
+      .set({ verification: "duplicate" })
+      .where(inArray(factsTable.id, applied.duplicateIds));
+  }
+  if (applied.conflictedIds.length > 0) {
     await db
       .update(factsTable)
       .set({ verification: "conflicted" })
-      .where(inArray(factsTable.id, [...conflictedIds]));
+      .where(inArray(factsTable.id, applied.conflictedIds));
   }
-  if (verifiedIds.length > 0) {
+  if (applied.verifiedIds.length > 0) {
     await db
       .update(factsTable)
       .set({ verification: "verified" })
-      .where(inArray(factsTable.id, verifiedIds));
+      .where(inArray(factsTable.id, applied.verifiedIds));
   }
   if (staleIds.length > 0) {
     await db
@@ -628,10 +744,14 @@ export async function verify(
   }
 
   emit({ type: "phase", phase: "verify", status: "done" });
-  return { verifiedFacts: surviving, conflicts, warnings };
+  return {
+    verifiedFacts: applied.surviving,
+    conflicts: applied.conflicts,
+    warnings,
+  };
 }
 
-/** N5 — verified facts only → persisted brief JSON. */
+/** N5; verified facts only → persisted brief JSON. */
 export async function synthesize(
   state: ResearchStateType,
   config?: LangGraphRunnableConfig,
@@ -650,6 +770,7 @@ export async function synthesize(
     claim: f.claim,
     asOfDate: f.asOfDate,
     tags: f.tags,
+    usefulness: f.usefulness,
   }));
 
   const emptyBrief = {
@@ -671,16 +792,18 @@ export async function synthesize(
               system:
                 "You write a one-page sales brief for a fire-apparatus account executive from verified, cited facts. " +
                 "Only reference fact IDs you were given. Rank 'why call today' by sales relevance and recency. " +
-                "Signals must be concrete and actionable — dated events, dollar amounts, aging apparatus, " +
+                "Signals must be concrete and actionable: dated events, dollar amounts, aging apparatus, " +
                 "awarded grants, open bids, leadership changes. Never write generic headlines like " +
                 "'active community engagement'; if nothing concrete exists, return fewer signals and " +
-                "note the gap in caveats instead.",
+                "note the gap in caveats instead. Curate each section from high-usefulness facts first. " +
+                "Write like a sharp colleague: plain, direct sentences an AE can say out loud. " +
+                "Never use em dashes or en dashes anywhere in the brief.",
               prompt: [
                 anchorPacket(state.anchor!, state.entityGraph),
-                "## Verified facts (id · category · claim · as-of)",
+                "## Verified facts (id · category · usefulness · claim · as-of)",
                 ...factList.map(
                   (f) =>
-                    `- ${f.id} · ${f.category} · ${f.claim}${f.asOfDate ? ` (as of ${f.asOfDate})` : ""}`,
+                    `- ${f.id} · ${f.category} · ${f.usefulness ?? "medium"} · ${f.claim}${f.asOfDate ? ` (as of ${f.asOfDate})` : ""}`,
                 ),
                 "",
                 "Produce the brief: summary, top-3 'why call today' signals, curated fact ids per section, conflicts, honest caveats.",

@@ -2,7 +2,7 @@ import type { Anchor } from "@/lib/schemas/anchor";
 import type { EntityGraph } from "@/lib/schemas/llm";
 
 /**
- * The anchor packet (PLAN §3 N0) — injected into every prompt with the
+ * The anchor packet (PLAN §3 N0); injected into every prompt with the
  * standing wrong-department rule (failure mode #1).
  */
 export function anchorPacket(anchor: Anchor, entityGraph?: EntityGraph | null): string {
@@ -18,7 +18,7 @@ export function anchorPacket(anchor: Anchor, entityGraph?: EntityGraph | null): 
     "",
     "STANDING RULE: discard any source about a similarly-named department in a",
     "different city, county, or state. Verify location context before trusting",
-    "a page — wrong-department contamination is the #1 failure mode.",
+    "a page; wrong-department contamination is the #1 failure mode.",
   ].filter((l): l is string => typeof l === "string");
 
   if (entityGraph) {
@@ -27,7 +27,7 @@ export function anchorPacket(anchor: Anchor, entityGraph?: EntityGraph | null): 
       "## Entity graph (who operates this station / who buys the trucks)",
       entityGraph.buyerSummary,
       ...entityGraph.entities.map(
-        (e) => `- [${e.kind}] ${e.name}${e.note ? ` — ${e.note}` : ""}`,
+        (e) => `- [${e.kind}] ${e.name}${e.note ? `; ${e.note}` : ""}`,
       ),
     );
   }

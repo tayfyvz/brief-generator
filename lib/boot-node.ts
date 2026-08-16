@@ -1,6 +1,6 @@
 /**
  * Node-only boot sequence, dynamically imported by instrumentation.ts.
- * This module (and everything it pulls in — pg, drizzle) is aliased to
+ * This module (and everything it pulls in; pg, drizzle) is aliased to
  * `false` in the edge webpack compile; see next.config.ts.
  */
 import { getEnv } from "@/lib/env";

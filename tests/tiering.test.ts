@@ -23,7 +23,7 @@ describe("tierForUrl", () => {
 
   it("treats a department's own domain as T1 via officialDomains", () => {
     expect(tierForUrl("https://www.nhrfr.org/about", ["nhrfr.org"])).toBe(1);
-    // Without the hint, an unknown .org would be local-press tier — but the
+    // Without the hint, an unknown .org would be local-press tier; but the
     // fire-department name heuristic still catches it.
     expect(tierForUrl("https://www.nhrfr.org/about")).toBe(1);
   });

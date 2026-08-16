@@ -83,7 +83,7 @@ async function seed() {
       id: src.official,
       runId,
       url: "https://www.nhrfr.org/about",
-      title: "North Hudson Regional Fire & Rescue — About & Leadership",
+      title: "North Hudson Regional Fire & Rescue; About & Leadership",
       tier: 1,
       contentMd:
         "# North Hudson Regional Fire & Rescue\n\nNHRFR serves Weehawken, Union City, West New York, North Bergen and Guttenberg…",
@@ -93,7 +93,7 @@ async function seed() {
       id: src.dealerPierce,
       runId,
       url: "https://www.fire-safety.com/deliveries/north-hudson-regional",
-      title: "Fire & Safety Services — NHRFR Pierce Deliveries",
+      title: "Fire & Safety Services; NHRFR Pierce Deliveries",
       tier: 2,
       contentMd:
         "Delivered November 2018: Pierce Arrow XT 100' tiller (job #31983)…",
@@ -104,7 +104,7 @@ async function seed() {
       id: src.dealerFerrara,
       runId,
       url: "https://www.firefighterone.com/deliveries/nhrfr-inferno-102",
-      title: "Firefighter One — NHRFR 2024 Ferrara Inferno 102' Rearmount",
+      title: "Firefighter One; NHRFR 2024 Ferrara Inferno 102' Rearmount",
       tier: 2,
       contentMd:
         "NHRFR placed the 2024 Ferrara Inferno 102' rear-mount aerial in service…",
@@ -115,10 +115,10 @@ async function seed() {
       id: src.cds,
       runId,
       url: "https://www.kim.senate.gov/appropriations/cds-fy2026",
-      title: "Sen. Andy Kim — FY2026 Congressionally Directed Spending Requests",
+      title: "Sen. Andy Kim; FY2026 Congressionally Directed Spending Requests",
       tier: 1,
       contentMd:
-        "North Hudson Regional Fire and Rescue — Firehouse Modernization and Safety Upgrades Project — $1,410,000…",
+        "North Hudson Regional Fire and Rescue; Firehouse Modernization and Safety Upgrades Project; $1,410,000…",
       fetchedAt: new Date("2026-08-09T14:05:00Z"),
       publishedAt: "2025-05-20",
     },
@@ -126,7 +126,7 @@ async function seed() {
       id: src.localPress,
       runId,
       url: "https://hudsoncountyview.com/nhrfr-swears-in-chief-donnarumma",
-      title: "Hudson County View — NHRFR swears in Chief David Donnarumma",
+      title: "Hudson County View; NHRFR swears in Chief David Donnarumma",
       tier: 3,
       contentMd:
         "David Donnarumma, a 30-year veteran, was sworn in as Chief of Department in September 2022…",
@@ -210,9 +210,9 @@ async function seed() {
       category: "leadership",
       tags: ["contact", "phone"],
       claim:
-        "Administrative HQ is at 11 Port Imperial Blvd, West New York, NJ — (201) 601-3542, Mon–Fri 8:00–4:00.",
+        "Administrative HQ is at 11 Port Imperial Blvd, West New York, NJ; (201) 601-3542, Mon-Fri 8:00-4:00.",
       quote:
-        "Administrative HQ (Reports & Records) (201) 601-3542 — 11 Port Imperial Blvd, West New York, NJ",
+        "Administrative HQ (Reports & Records) (201) 601-3542; 11 Port Imperial Blvd, West New York, NJ",
       asOfDate: "2026-08-09",
       discoveredRound: 0,
       verification: "verified",
@@ -227,9 +227,9 @@ async function seed() {
       category: "fleet",
       tags: ["pumper", "pierce", "frontline"],
       claim:
-        "Engine 5's frontline rig is a 2015 Pierce Saber custom pumper — 1,500 GPM Waterous pump, 500-gallon tank, short wheelbase for the Palisades grid.",
+        "Engine 5's frontline rig is a 2015 Pierce Saber custom pumper; 1,500 GPM Waterous pump, 500-gallon tank, short wheelbase for the Palisades grid.",
       quote:
-        "2015 Pierce Saber Custom Pumper — 1,500 GPM Waterous pump, 500 gal tank, short wheelbase",
+        "2015 Pierce Saber Custom Pumper; 1,500 GPM Waterous pump, 500 gal tank, short wheelbase",
       asOfDate: "2026-08-09",
       discoveredRound: 0,
       verification: "verified",
@@ -318,7 +318,7 @@ async function seed() {
       claim:
         "NHRFR has a $1,410,000 Congressionally Directed Spending request (Sen. Andy Kim / Rep. Rob Menendez) for the Firehouse Modernization and Safety Upgrades Project.",
       quote:
-        "North Hudson Regional Fire and Rescue — Firehouse Modernization and Safety Upgrades Project — $1,410,000",
+        "North Hudson Regional Fire and Rescue; Firehouse Modernization and Safety Upgrades Project; $1,410,000",
       asOfDate: "2025-05-20",
       discoveredRound: 1,
       verification: "verified",
@@ -334,7 +334,7 @@ async function seed() {
       category: "news",
       tags: ["delivery", "modernization"],
       claim:
-        "The 2024 Ferrara Inferno replaced a tractor-drawn tiller at the 88th Street firehouse — the fleet is shifting toward rear-mount aerials.",
+        "The 2024 Ferrara Inferno replaced a tractor-drawn tiller at the 88th Street firehouse; the fleet is shifting toward rear-mount aerials.",
       quote:
         "2024 Ferrara Inferno 102-foot rear-mount aerial, which replaced a traditional tractor-drawn tiller rig at the 88th Street firehouse",
       asOfDate: "2024-06-01",
@@ -351,7 +351,7 @@ async function seed() {
       category: "other",
       tags: ["governance", "regional"],
       claim:
-        "This station buys through NHRFR — a 1999 consolidation of five municipalities (Weehawken, Union City, North Bergen, West New York, Guttenberg) serving 200,000+ residents.",
+        "This station buys through NHRFR; a 1999 consolidation of five municipalities (Weehawken, Union City, North Bergen, West New York, Guttenberg) serving 200,000+ residents.",
       quote:
         "NHRFR serves Weehawken, Union City, West New York, North Bergen and Guttenberg",
       asOfDate: "2026-08-09",
@@ -390,7 +390,7 @@ async function seed() {
 
   const content: BriefContent = {
     summary:
-      "This station is part of North Hudson Regional Fire & Rescue — apparatus decisions are made regionally, not by Weehawken alone. The board chair (Weehawken's mayor) signs off on capital budgets, and the fleet is mid-modernization: new Ferrara rear-mounts arriving while a 2008 tiller comes up for replacement.",
+      "This station is part of North Hudson Regional Fire & Rescue; apparatus decisions are made regionally, not by Weehawken alone. The board chair (Weehawken's mayor) signs off on capital budgets, and the fleet is mid-modernization: new Ferrara rear-mounts arriving while a 2008 tiller comes up for replacement.",
     whyCallToday: [
       {
         headline:
@@ -434,7 +434,7 @@ async function seed() {
     },
     conflicts: [],
     caveats: [
-      "Chief appointment reporting is from 2022 — verify current command before the call.",
+      "Chief appointment reporting is from 2022; verify current command before the call.",
       "Seed data for development: distilled from the assignment's example research document.",
     ],
     generatedAt: "2026-08-09T14:07:30Z",

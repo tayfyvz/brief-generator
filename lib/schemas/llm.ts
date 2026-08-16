@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { confidenceSchema, factCategorySchema } from "./fact";
+import { confidenceSchema, factCategorySchema, usefulnessSchema } from "./fact";
 
 /**
  * Structured-output schemas for LLM calls (single source of truth for what
@@ -38,16 +38,28 @@ export const extractedFactSchema = z.object({
   category: factCategorySchema,
   tags: z.array(z.string()),
   claim: z.string(),
-  /** VERBATIM substring of the page — validated, fact dropped if absent. */
+  /** VERBATIM substring of the page; validated, fact dropped if absent. */
   quote: z.string(),
   /** ISO date (yyyy-mm-dd) the fact is current as of, if stated. */
   asOfDate: z.string().nullable(),
   confidence: confidenceSchema,
+  /** Sales usefulness to the AE; orders facts in the brief (see fact.ts). */
+  usefulness: usefulnessSchema,
 });
 export const extractedFactsSchema = z.object({
   facts: z.array(extractedFactSchema),
 });
 export type ExtractedFact = z.infer<typeof extractedFactSchema>;
+
+/**
+ * Tier-4 pages (social media, fan wikis, forums) never become citations, but
+ * they are lead mines (PLAN §4): unit numbers, apparatus years, names, and
+ * events worth verifying against tier 1 to 3 sources in the expansion loop.
+ */
+export const extractedLeadsSchema = z.object({
+  hints: z.array(z.string()),
+});
+export type ExtractedLeads = z.infer<typeof extractedLeadsSchema>;
 
 /** N3 planExpansion output: new leads from what earlier rounds discovered. */
 export const expansionLeadSchema = z.object({
@@ -76,7 +88,25 @@ export const verifyVerdictsSchema = z.object({
       note: z.string().optional(),
     }),
   ),
-  /** Groups of facts that contradict each other (surfaced, never silently picked). */
+  /**
+   * Groups of facts that restate the same information. One canonical fact is
+   * kept (best tier, most detail, most recent); the rest are hidden as
+   * duplicates. Restatements are NOT conflicts.
+   */
+  duplicates: z.array(
+    z.object({
+      topic: z.string(),
+      /** The fact to keep and render. */
+      keepFactId: z.string(),
+      /** The restatements to hide. */
+      dropFactIds: z.array(z.string()),
+    }),
+  ),
+  /**
+   * Groups of facts that genuinely contradict each other: they cannot all be
+   * true (two different chiefs, two different years for the same unit).
+   * Surfaced in the brief, never silently picked.
+   */
   conflicts: z.array(
     z.object({
       topic: z.string(),
@@ -88,7 +118,7 @@ export const verifyVerdictsSchema = z.object({
 });
 export type VerifyVerdicts = z.infer<typeof verifyVerdictsSchema>;
 
-/** N5 synthesize output — maps onto BriefContent (generatedAt added by code). */
+/** N5 synthesize output; maps onto BriefContent (generatedAt added by code). */
 export const llmBriefSchema = z.object({
   summary: z.string(),
   whyCallToday: z.array(

@@ -5,14 +5,14 @@ import { anchorSchema, type Anchor } from "@/lib/schemas/anchor";
 /**
  * Google Places Details client (PLAN §3 N0). Place ID → anchor packet.
  * Returns null when the Place ID does not resolve. Falls back to a stub
- * when GOOGLE_PLACES_API_KEY is missing — never blocks on a missing key.
+ * when GOOGLE_PLACES_API_KEY is missing; never blocks on a missing key.
  */
 export interface PlacesClient {
   getDetails(placeId: string): Promise<Anchor | null>;
   readonly stubbed: boolean;
 }
 
-/** Places API (New) v1 response — only the fields we request. */
+/** Places API (New) v1 response; only the fields we request. */
 const placeResponseSchema = z.object({
   id: z.string(),
   displayName: z.object({ text: z.string() }).optional(),
@@ -91,7 +91,7 @@ class GooglePlacesClient implements PlacesClient {
 const STUB_ANCHORS: Record<string, Anchor> = {
   ChIJpcN7ecgAyIkRrOcWzZx3Yyc: {
     placeId: "ChIJpcN7ecgAyIkRrOcWzZx3Yyc",
-    name: "Weehawken Fire Department (NHRFR Station — Engine 5)",
+    name: "Weehawken Fire Department (NHRFR Station; Engine 5)",
     address: "4610 Park Ave, Weehawken, NJ 07086, USA",
     city: "Weehawken",
     county: "Hudson County",

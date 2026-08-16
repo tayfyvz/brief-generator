@@ -87,7 +87,7 @@ export const sources = pgTable(
     url: text("url").notNull(),
     title: text("title"),
     tier: smallint("tier"),
-    /** Markdown snapshot at research time — provenance for citation popovers. */
+    /** Markdown snapshot at research time; provenance for citation popovers. */
     contentMd: text("content_md"),
     contentHash: text("content_hash"),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }),
@@ -120,9 +120,11 @@ export const facts = pgTable(
     attributes: jsonb("attributes"),
     verification: text("verification"),
     confidence: text("confidence"),
+    /** high | medium | low sales usefulness; orders facts within sections. */
+    usefulness: text("usefulness"),
     stale: boolean("stale").notNull().default(false),
     searchVec: tsvector("search_vec").generatedAlwaysAs(
-      // immutable_array_to_string is created in the initial migration —
+      // immutable_array_to_string is created in the initial migration ; 
       // array_to_string() is only STABLE, which generated columns reject.
       sql`to_tsvector('english', coalesce(claim, '') || ' ' || coalesce(quote, '') || ' ' || immutable_array_to_string(tags))`,
     ),

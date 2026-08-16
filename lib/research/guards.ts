@@ -6,7 +6,7 @@ import { getEnv } from "@/lib/env";
 /**
  * Global abuse guards for the public demo endpoint (PLAN §2): per-IP rate
  * limit (in-memory), max concurrent runs, daily run limit. Cached-brief
- * reads are never guarded — they're cheap.
+ * reads are never guarded; they're cheap.
  */
 
 const ipHits = new Map<string, number[]>();
@@ -59,14 +59,14 @@ export async function checkGlobalRunLimits(): Promise<GuardResult> {
     return {
       ok: false,
       status: 503,
-      reason: "Too many research runs in flight — try again in a minute.",
+      reason: "Too many research runs in flight; try again in a minute.",
     };
   }
   if (Number(row.daily) >= env.DAILY_RUN_LIMIT) {
     return {
       ok: false,
       status: 429,
-      reason: "Daily research budget exhausted — cached briefs remain available.",
+      reason: "Daily research budget exhausted; cached briefs remain available.",
     };
   }
   return { ok: true };

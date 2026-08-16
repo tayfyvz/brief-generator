@@ -103,7 +103,7 @@ class FirecrawlClient implements FetchClient {
       body: JSON.stringify({ url, formats: ["markdown"], timeout: 30_000 }),
     });
     if (res.status === 429) {
-      // Quota exhausted despite the bucket — degrade to the direct fetcher
+      // Quota exhausted despite the bucket; degrade to the direct fetcher
       // rather than losing the page.
       return directFetch(url);
     }
@@ -111,7 +111,7 @@ class FirecrawlClient implements FetchClient {
       throw new Error(`Firecrawl ${res.status}: ${await res.text()}`);
     }
     if (!res.ok) {
-      // Firecrawl can't handle every municipal site — try the direct fallback.
+      // Firecrawl can't handle every municipal site; try the direct fallback.
       return directFetch(url);
     }
     const parsed = firecrawlResponseSchema.parse(await res.json());

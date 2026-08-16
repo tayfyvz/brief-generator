@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Joining an active run is free — no new work starts.
+  // Joining an active run is free; no new work starts.
   if (placeId) {
     const active = manager.activeRunFor(placeId);
     if (active) return NextResponse.json({ runId: active, joined: true });

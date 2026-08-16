@@ -89,7 +89,7 @@ export async function GET(
 
       if (closed) return;
       if (!manager.isActive(runId)) {
-        // Nothing live to tail (finished or interrupted run) — end the stream.
+        // Nothing live to tail (finished or interrupted run); end the stream.
         close();
         return;
       }

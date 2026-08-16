@@ -38,6 +38,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       quote: "Chief of Department: David Donnarumma.",
       asOfDate: null,
       confidence: "high",
+      usefulness: "high",
     },
     {
       category: "leadership",
@@ -48,6 +49,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
         "Weehawken Mayor Richard Turner serves as Chairman of the NHRFR Management Committee.",
       asOfDate: null,
       confidence: "high",
+      usefulness: "high",
     },
     {
       category: "leadership",
@@ -58,6 +60,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
         "Executive administration is overseen by Co-Executive Directors Michael DeOrio and Jeff Welz.",
       asOfDate: null,
       confidence: "high",
+      usefulness: "high",
     },
     {
       category: "leadership",
@@ -65,9 +68,10 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       claim:
         "Administrative HQ (Reports & Records) is reachable at (201) 601-3542, 11 Port Imperial Blvd, West New York, NJ.",
       quote:
-        "Administrative HQ (Reports & Records): (201) 601-3542 — 11 Port Imperial Blvd,",
+        "Administrative HQ (Reports & Records): (201) 601-3542; 11 Port Imperial Blvd,",
       asOfDate: null,
       confidence: "high",
+      usefulness: "high",
     },
     {
       category: "other",
@@ -78,6 +82,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
         "NHRFR serves Weehawken, Union City, West New York, North Bergen and Guttenberg,",
       asOfDate: null,
       confidence: "high",
+      usefulness: "high",
     },
   ],
   "https://www.fire-safety.com/deliveries/north-hudson-regional": [
@@ -90,6 +95,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
         "Delivered November 2018: Pierce Arrow XT 100' tiller (job #31983), Detroit DD13",
       asOfDate: "2018-11-15",
       confidence: "high",
+      usefulness: "high",
     },
     {
       category: "fleet",
@@ -97,9 +103,10 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       claim:
         "Engine 5 in Weehawken runs a 2015 Pierce Saber custom pumper with a 1,500 GPM Waterous pump.",
       quote:
-        "In service since 2015: Pierce Saber custom pumper — 1,500 GPM Waterous pump,",
+        "In service since 2015: Pierce Saber custom pumper; 1,500 GPM Waterous pump,",
       asOfDate: null,
       confidence: "high",
+      usefulness: "high",
     },
     {
       category: "procurement",
@@ -110,6 +117,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
         "Fire & Safety Services, Ltd. is the exclusive Pierce Manufacturing dealer for New Jersey.",
       asOfDate: null,
       confidence: "high",
+      usefulness: "high",
     },
   ],
   "https://www.firefighterone.com/deliveries/nhrfr-inferno-102": [
@@ -122,6 +130,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
         "NHRFR placed the 2024 Ferrara Inferno 102' rear-mount aerial in service as Ladder 5,",
       asOfDate: "2024-06-01",
       confidence: "high",
+      usefulness: "high",
     },
     {
       category: "fleet",
@@ -131,6 +140,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       quote: "are scheduled for evaluation and potential replacement",
       asOfDate: "2024-06-01",
       confidence: "medium",
+      usefulness: "high",
     },
     {
       category: "procurement",
@@ -141,6 +151,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
         "Firefighter One, LLC represents Ferrara Fire Apparatus and the REV Group in the region.",
       asOfDate: null,
       confidence: "high",
+      usefulness: "high",
     },
   ],
   "https://www.kim.senate.gov/appropriations/cds-fy2026": [
@@ -149,9 +160,10 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
       tags: ["federal", "cds", "facilities"],
       claim:
         "NHRFR has a $1,410,000 Congressionally Directed Spending request for its Firehouse Modernization and Safety Upgrades Project.",
-      quote: "Upgrades Project — $1,410,000. Sponsored with Rep. Rob Menendez under the",
+      quote: "Upgrades Project; $1,410,000. Sponsored with Rep. Rob Menendez under the",
       asOfDate: "2025-05-20",
       confidence: "high",
+      usefulness: "high",
     },
   ],
   "https://hudsoncountyview.com/nhrfr-swears-in-chief-donnarumma": [
@@ -164,6 +176,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
         "David Donnarumma, a 30-year veteran of the regional fire service, was sworn in as",
       asOfDate: "2022-09-14",
       confidence: "high",
+      usefulness: "high",
     },
     {
       category: "news",
@@ -174,6 +187,7 @@ const FIXTURE_EXTRACTIONS: Record<string, ExtractedFact[]> = {
         "of Acting Chief Michael Falco and retired Chief Frank Montagne.",
       asOfDate: "2022-09-14",
       confidence: "medium",
+      usefulness: "high",
     },
   ],
 };
@@ -232,7 +246,7 @@ export function getStubStructuredOutput(task: string, context: unknown): unknown
         ],
         officialDomains: ["nhrfr.org"],
         buyerSummary:
-          "Apparatus is purchased by North Hudson Regional Fire and Rescue (NHRFR), the regional consolidation this station belongs to — not by Weehawken alone.",
+          "Apparatus is purchased by North Hudson Regional Fire and Rescue (NHRFR), the regional consolidation this station belongs to; not by Weehawken alone.",
       };
     }
     case "planQueries": {
@@ -248,8 +262,12 @@ export function getStubStructuredOutput(task: string, context: unknown): unknown
       const ctx = context as { facts: { id: string }[] };
       return {
         verdicts: ctx.facts.map((f) => ({ factId: f.id, verdict: "supported" })),
+        duplicates: [],
         conflicts: [],
       };
+    }
+    case "extractLeads": {
+      return { hints: [] };
     }
     case "planExpansion": {
       const ctx = context as { round: number };
@@ -259,7 +277,7 @@ export function getStubStructuredOutput(task: string, context: unknown): unknown
             {
               kind: "similar",
               query: "https://www.firefighterone.com/deliveries/nhrfr-inferno-102",
-              reason: "Dealer delivery page — find sibling delivery pages for the same department.",
+              reason: "Dealer delivery page; find sibling delivery pages for the same department.",
             },
             {
               kind: "search",
@@ -273,7 +291,7 @@ export function getStubStructuredOutput(task: string, context: unknown): unknown
       }
       return {
         leads: [],
-        criticNote: "No further productive leads — coverage looks complete for offline fixtures.",
+        criticNote: "No further productive leads; coverage looks complete for offline fixtures.",
       };
     }
     case "synthesize": {
@@ -304,7 +322,7 @@ export function getStubStructuredOutput(task: string, context: unknown): unknown
         },
         conflicts: [],
         caveats: [
-          "Generated by the offline stub pipeline — verify against live sources once API keys are configured.",
+          "Generated by the offline stub pipeline; verify against live sources once API keys are configured.",
         ],
       };
     }

@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 
 /**
- * Environment schema — single source of truth for configuration.
+ * Environment schema; single source of truth for configuration.
  *
  * API keys are optional by design: tool clients fall back to stubs when a key
  * is missing (see lib/tools). Only the database is required to boot.
@@ -16,7 +16,7 @@ export const envSchema = z.object({
     .url()
     .describe("Postgres connection string, e.g. postgres://user:pass@host:5432/db"),
 
-  // External service keys — all optional; missing key => stubbed client.
+  // External service keys; all optional; missing key => stubbed client.
   // LLM provider: Anthropic is preferred when set; OpenAI is the fallback.
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
@@ -28,7 +28,7 @@ export const envSchema = z.object({
   FIRECRAWL_RPM: z.coerce.number().int().positive().default(10),
   GOOGLE_PLACES_API_KEY: z.string().min(1).optional(),
 
-  // Per-run hard caps (PLAN §2) — every run finishes with whatever it has.
+  // Per-run hard caps (PLAN §2); every run finishes with whatever it has.
   MAX_ROUNDS: z.coerce.number().int().positive().default(4),
   MAX_SEARCHES_PER_RUN: z.coerce.number().int().positive().default(60),
   MAX_FETCHES_PER_RUN: z.coerce.number().int().positive().default(40),

@@ -4,7 +4,7 @@ import { searchResultSchema, type SearchResult } from "@/lib/schemas/tools";
 import { FIXTURE_SEARCH_RESULTS } from "./fixtures";
 
 /**
- * Exa semantic search / find-similar — expansion phase only (PLAN §1):
+ * Exa semantic search / find-similar; expansion phase only (PLAN §1):
  * discovery of dealer delivery pages and obscure gov PDFs that keyword
  * search misses. Stubbed when EXA_API_KEY is absent.
  */

@@ -6,7 +6,7 @@ import type { Warning } from "@/lib/schemas/tools";
 
 /**
  * The one client store (PLAN §6): live-run state fed by the SSE subscriber.
- * Cached briefs never touch this — they are server-rendered.
+ * Cached briefs never touch this; they are server-rendered.
  */
 export type TrackLiveState = {
   status: "pending" | "running" | "done";

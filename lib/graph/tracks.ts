@@ -14,7 +14,7 @@ export const TRACKS: TrackDef[] = [
     key: "fleet",
     title: "Fleet & apparatus",
     focus:
-      "Inventory what they drive: engines, ladders, tillers, squads, rescues — " +
+      "Inventory what they drive: engines, ladders, tillers, squads, rescues; " +
       "year, make, model, pump/tank specs, unit assignments. Note apparatus age: " +
       "rigs older than ~15 years signal a coming replacement purchase.",
   },
@@ -32,7 +32,7 @@ export const TRACKS: TrackDef[] = [
     focus:
       "Follow the money: capital budgets and bond ordinances for apparatus, " +
       "FEMA AFG/SAFER awards, congressionally directed spending, state grants, " +
-      "council minutes approving purchases — with amounts, dates, and status.",
+      "council minutes approving purchases; with amounts, dates, and status.",
   },
   {
     key: "news",
@@ -46,7 +46,7 @@ export const TRACKS: TrackDef[] = [
     key: "discovery",
     title: "Open discovery",
     focus:
-      "Catch-all: anything sales-relevant the named tracks would miss — " +
+      "Catch-all: anything sales-relevant the named tracks would miss; " +
       "consolidation politics, staffing changes, mutual-aid arrangements, " +
       "facility conditions. File findings under category 'other' with tags; " +
       "never drop something just because it doesn't fit a category.",

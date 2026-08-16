@@ -7,12 +7,12 @@ import { getStubStructuredOutput } from "./stub";
 
 /**
  * Thin LLM boundary (PLAN §1): LangGraph orchestrates, nodes call this
- * directly — no LangChain model/prompt wrappers. One method: structured
+ * directly; no LangChain model/prompt wrappers. One method: structured
  * output validated against a Zod schema. Falls back to a deterministic
  * stub when ANTHROPIC_API_KEY is missing.
  */
 export interface StructuredRequest<T> {
-  /** Stable task name — labels the call and routes the stub ("resolveEntity"…). */
+  /** Stable task name; labels the call and routes the stub ("resolveEntity"…). */
   task: string;
   system: string;
   prompt: string;
@@ -42,9 +42,11 @@ class AnthropicLlmClient implements LlmClient {
   }
 
   async structured<T>(req: StructuredRequest<T>): Promise<T> {
+    // Thinking is on by default on claude-opus-5 and max_tokens caps thinking
+    // plus response text, so leave generous headroom.
     const response = await this.client.messages.parse({
       model: MODEL,
-      max_tokens: req.maxTokens ?? 8192,
+      max_tokens: req.maxTokens ?? 16000,
       system: req.system,
       messages: [{ role: "user", content: req.prompt }],
       output_config: {
@@ -65,7 +67,7 @@ class AnthropicLlmClient implements LlmClient {
 /**
  * OpenAI-backed client (user-directed alternative when no funded Anthropic
  * key is available). Uses chat completions with a JSON-schema response
- * format derived from the same Zod schema, then validates with Zod — the
+ * format derived from the same Zod schema, then validates with Zod; the
  * Zod parse is the real gate; one retry on invalid output.
  */
 class OpenAiLlmClient implements LlmClient {
@@ -87,7 +89,7 @@ class OpenAiLlmClient implements LlmClient {
         messages: [
           {
             role: "system",
-            content: `${req.system}\nRespond with a single JSON object matching the required schema — no prose.`,
+            content: `${req.system}\nRespond with a single JSON object matching the required schema; no prose.`,
           },
           { role: "user", content: req.prompt },
         ],

@@ -4,7 +4,7 @@ import { getEnv } from "@/lib/env";
  * Per-run hard caps (PLAN §2): searches/fetches are counted in-process
  * (parallel tracks can't see each other's graph state mid-superstep, so a
  * shared synchronous counter is the race-free way to enforce a run budget).
- * When a cap hits, the run finishes with whatever it has — visibly.
+ * When a cap hits, the run finishes with whatever it has; visibly.
  */
 interface RunBudget {
   searches: number;

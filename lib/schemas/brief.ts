@@ -15,7 +15,7 @@ export const briefSectionKeySchema = z.enum([
 ]);
 export type BriefSectionKey = z.infer<typeof briefSectionKeySchema>;
 
-/** A ranked, dated "why call today" signal — the 10-second read. */
+/** A ranked, dated "why call today" signal; the 10-second read. */
 export const briefSignalSchema = z.object({
   headline: z.string().min(1),
   detail: z.string().optional(),

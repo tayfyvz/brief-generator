@@ -9,7 +9,7 @@ import type { FetchedPage, SearchResult } from "@/lib/schemas/tools";
 export const FIXTURE_PAGES: Record<string, FetchedPage> = {
   "https://www.nhrfr.org/about": {
     url: "https://www.nhrfr.org/about",
-    title: "North Hudson Regional Fire & Rescue — About & Leadership",
+    title: "North Hudson Regional Fire & Rescue; About & Leadership",
     markdown: [
       "# North Hudson Regional Fire & Rescue",
       "",
@@ -21,23 +21,23 @@ export const FIXTURE_PAGES: Record<string, FetchedPage> = {
       "Executive administration is overseen by Co-Executive Directors Michael DeOrio and Jeff Welz.",
       "Chief of Department: David Donnarumma.",
       "",
-      "Administrative HQ (Reports & Records): (201) 601-3542 — 11 Port Imperial Blvd,",
-      "West New York, NJ. Offices open Mon–Fri 8:00 AM – 4:00 PM.",
+      "Administrative HQ (Reports & Records): (201) 601-3542; 11 Port Imperial Blvd,",
+      "West New York, NJ. Offices open Mon-Fri 8:00 AM; 4:00 PM.",
       "Fire Control Center (emergency/non-emergency): (201) 601-3554.",
     ].join("\n"),
   },
   "https://www.fire-safety.com/deliveries/north-hudson-regional": {
     url: "https://www.fire-safety.com/deliveries/north-hudson-regional",
-    title: "Fire & Safety Services — NHRFR Pierce Deliveries",
+    title: "Fire & Safety Services; NHRFR Pierce Deliveries",
     markdown: [
       "# Recent Pierce deliveries to North Hudson Regional Fire & Rescue",
       "",
       "Delivered November 2018: Pierce Arrow XT 100' tiller (job #31983), Detroit DD13",
-      "525hp, TAK-4 suspension — assigned as Ladder 4.",
+      "525hp, TAK-4 suspension; assigned as Ladder 4.",
       "Delivered November 2018: Pierce Enforcer 100' aerial (job #31984), 1,500 GPM pump,",
       "300 gallon tank.",
-      "In service since 2015: Pierce Saber custom pumper — 1,500 GPM Waterous pump,",
-      "500 gal tank, short wheelbase — assigned as Engine 5 in Weehawken.",
+      "In service since 2015: Pierce Saber custom pumper; 1,500 GPM Waterous pump,",
+      "500 gal tank, short wheelbase; assigned as Engine 5 in Weehawken.",
       "",
       "Fire & Safety Services, Ltd. is the exclusive Pierce Manufacturing dealer for New Jersey.",
     ].join("\n"),
@@ -45,7 +45,7 @@ export const FIXTURE_PAGES: Record<string, FetchedPage> = {
   },
   "https://www.firefighterone.com/deliveries/nhrfr-inferno-102": {
     url: "https://www.firefighterone.com/deliveries/nhrfr-inferno-102",
-    title: "Firefighter One — NHRFR 2024 Ferrara Inferno 102' Rearmount",
+    title: "Firefighter One; NHRFR 2024 Ferrara Inferno 102' Rearmount",
     markdown: [
       "# NHRFR places 2024 Ferrara Inferno in service",
       "",
@@ -61,12 +61,12 @@ export const FIXTURE_PAGES: Record<string, FetchedPage> = {
   },
   "https://www.kim.senate.gov/appropriations/cds-fy2026": {
     url: "https://www.kim.senate.gov/appropriations/cds-fy2026",
-    title: "Sen. Andy Kim — FY2026 Congressionally Directed Spending Requests",
+    title: "Sen. Andy Kim; FY2026 Congressionally Directed Spending Requests",
     markdown: [
       "# FY2026 Congressionally Directed Spending Requests",
       "",
-      "North Hudson Regional Fire and Rescue — Firehouse Modernization and Safety",
-      "Upgrades Project — $1,410,000. Sponsored with Rep. Rob Menendez under the",
+      "North Hudson Regional Fire and Rescue; Firehouse Modernization and Safety",
+      "Upgrades Project; $1,410,000. Sponsored with Rep. Rob Menendez under the",
       "Subcommittee on Commerce, Justice, Science, and Related Agencies. Scope:",
       "reinforcing apparatus bay floors, modernizing HVAC, replacing backup generators.",
     ].join("\n"),
@@ -74,7 +74,7 @@ export const FIXTURE_PAGES: Record<string, FetchedPage> = {
   },
   "https://hudsoncountyview.com/nhrfr-swears-in-chief-donnarumma": {
     url: "https://hudsoncountyview.com/nhrfr-swears-in-chief-donnarumma",
-    title: "Hudson County View — NHRFR swears in Chief David Donnarumma",
+    title: "Hudson County View; NHRFR swears in Chief David Donnarumma",
     markdown: [
       "# NHRFR swears in new chief",
       "",

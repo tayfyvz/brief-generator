@@ -8,7 +8,7 @@ const normalize = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 
 /**
  * Models return partial dates ("2025", "2024-06") despite the schema asking
- * for yyyy-mm-dd. Normalize to a full ISO date (missing parts → 01) or null —
+ * for yyyy-mm-dd. Normalize to a full ISO date (missing parts → 01) or null ; 
  * a bad date must never fail the insert and lose the fact.
  */
 export function normalizeAsOfDate(input: string | null | undefined): string | null {
@@ -106,6 +106,7 @@ export async function storeExtractedFacts(opts: {
         asOfDate: normalizeAsOfDate(f.asOfDate),
         discoveredRound: round,
         confidence: f.confidence,
+        usefulness: f.usefulness,
         verification: "unverified",
       })),
     )
@@ -121,6 +122,7 @@ export async function storeExtractedFacts(opts: {
       quote: f.quote,
       asOfDate: normalizeAsOfDate(f.asOfDate),
       tier,
+      usefulness: f.usefulness,
     })),
     droppedQuotes,
   };
