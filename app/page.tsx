@@ -8,9 +8,9 @@ import { relativeDays } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 const SAMPLES: { placeId: string; label: string }[] = [
-  { placeId: "ChIJpcN7ecgAyIkRrOcWzZx3Yyc", label: "Weehawken, NJ" },
-  { placeId: "ChIJvfrKDp_Ua4gR5CHnUz3MbvE", label: "Sample 2" },
-  { placeId: "ChIJr-yREGP9tEwRr7M-F00PpM8", label: "Sample 3" },
+  { placeId: "ChIJpcN7ecgAyIkRrOcWzZx3Yyc", label: "Wise Avenue VFC — Dundalk, MD" },
+  { placeId: "ChIJvfrKDp_Ua4gR5CHnUz3MbvE", label: "Lexington FD — Lexington, IN" },
+  { placeId: "ChIJr-yREGP9tEwRr7M-F00PpM8", label: "Washington FD — Washington, VT" },
 ];
 
 export default async function Home() {
